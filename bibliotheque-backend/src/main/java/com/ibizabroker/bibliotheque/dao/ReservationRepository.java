@@ -5,6 +5,7 @@ import com.ibizabroker.bibliotheque.entity.StatutReservation;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -19,4 +20,6 @@ public interface ReservationRepository extends JpaRepository<Reservation, Intege
     long countByAdherent_UserIdAndStatutIn(Integer adherentId, List<StatutReservation> statuts);
 
     List<Reservation> findByLivre_BookIdAndAdherent_UserIdAndStatutIn(Integer livreId, Integer adherentId, List<StatutReservation> statuts);
+
+    List<Reservation> findByStatutInAndDateExpirationBefore(List<StatutReservation> statuts, LocalDateTime instant);
 }

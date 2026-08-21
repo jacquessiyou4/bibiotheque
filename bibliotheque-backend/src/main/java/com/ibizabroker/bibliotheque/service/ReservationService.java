@@ -13,6 +13,7 @@ import com.ibizabroker.bibliotheque.exceptions.BadRequestException;
 import com.ibizabroker.bibliotheque.exceptions.ConflictException;
 import com.ibizabroker.bibliotheque.exceptions.NotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -96,6 +97,20 @@ public class ReservationService {
 
     public ReservationResponse consulter(Integer id) {
         return versDto(trouverParId(id));
+    }
+
+    public List<ReservationResponse> listerExpirees() {
+        return reservationRepository.findByStatut(StatutReservation.EXPIREE).stream()
+                .map(this::versDto)
+                .collect(Collectors.toList());
+    }
+
+    @Scheduled(fixedRate = 60000)
+    public void expirerReservationsDepassees() {
+        List<Reservation> aExpirer = reservationRepository
+                .findByStatutInAndDateExpirationBefore(STATUTS_ACTIFS, LocalDateTime.now());
+        aExpirer.forEach(r -> r.setStatut(StatutReservation.EXPIREE));
+        reservationRepository.saveAll(aExpirer);
     }
 
     public ReservationResponse annuler(Integer id) {

@@ -47,6 +47,15 @@ public class ReservationController {
         return ResponseEntity.ok(reservationService.lister(statut, adherentId));
     }
 
+    @Operation(summary = "Lister les réservations expirées")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Réservations expirées")
+    })
+    @GetMapping("/expirees")
+    public ResponseEntity<List<ReservationResponse>> listerExpirees() {
+        return ResponseEntity.ok(reservationService.listerExpirees());
+    }
+
     @Operation(summary = "Consulter une réservation")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Réservation trouvée"),

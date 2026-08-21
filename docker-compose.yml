@@ -1,0 +1,71 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: biblio-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: bibliotheque
+    ports:
+      - "3306:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bibliotheque"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./bibliotheque-backend
+    container_name: biblio-backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/bibliotheque
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      # Cycle de beans JwtRequestFilter <-> JwtService <-> WebSecurityConfiguration,
+      # toléré par défaut sur Spring Boot 2.4.5 mais interdit depuis 2.6+.
+      SPRING_MAIN_ALLOW_CIRCULAR_REFERENCES: "true"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Insère automatiquement le compte admin + quelques livres au premier démarrage.
+  # Attend que le backend (Hibernate) ait créé les tables, puis applique seed.sql.
+  seed:
+    image: postgres:16-alpine
+    container_name: biblio-seed
+    environment:
+      PGPASSWORD: postgres
+    volumes:
+      - ./db/seed.sql:/seed.sql:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        echo "Attente de la création des tables par le backend...";
+        until [ "$$(psql -h postgres -U postgres -d bibliotheque -tAc \
+              "SELECT (to_regclass('public.users') IS NOT NULL AND to_regclass('public.role') IS NOT NULL AND to_regclass('public.books') IS NOT NULL AND to_regclass('public.user_role') IS NOT NULL)")" = "t" ]; do
+          sleep 3;
+        done;
+        echo "Tables prêtes, insertion des données...";
+        psql -h postgres -U postgres -d bibliotheque -v ON_ERROR_STOP=1 -f /seed.sql;
+        echo "Seed terminé.";
+    restart: "no"
+
+  frontend:
+    build: ./bibliotheque-frontend
+    container_name: biblio-frontend
+    ports:
+      - "4200:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

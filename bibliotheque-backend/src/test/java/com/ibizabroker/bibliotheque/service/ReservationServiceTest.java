@@ -1,13 +1,13 @@
 package com.ibizabroker.bibliotheque.service;
 
-import com.ibizabroker.bibliotheque.dao.BooksRepository;
+import com.ibizabroker.bibliotheque.dao.LivreRepository;
 import com.ibizabroker.bibliotheque.dao.ReservationRepository;
-import com.ibizabroker.bibliotheque.dao.UsersRepository;
+import com.ibizabroker.bibliotheque.dao.AdherentRepository;
 import com.ibizabroker.bibliotheque.dto.ReservationRequest;
-import com.ibizabroker.bibliotheque.entity.Books;
+import com.ibizabroker.bibliotheque.entity.Livre;
 import com.ibizabroker.bibliotheque.entity.Reservation;
 import com.ibizabroker.bibliotheque.entity.StatutReservation;
-import com.ibizabroker.bibliotheque.entity.Users;
+import com.ibizabroker.bibliotheque.entity.Adherent;
 import com.ibizabroker.bibliotheque.exceptions.ConflictException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,30 +32,30 @@ class ReservationServiceTest {
     private ReservationRepository reservationRepository;
 
     @Mock
-    private BooksRepository booksRepository;
+    private LivreRepository livreRepository;
 
     @Mock
-    private UsersRepository usersRepository;
+    private AdherentRepository adherentRepository;
 
     @InjectMocks
     private ReservationService reservationService;
 
-    private Books livreIndisponible;
-    private Users adherent;
+    private Livre livreIndisponible;
+    private Adherent adherent;
 
     @BeforeEach
     void setUp() {
-        livreIndisponible = new Books();
+        livreIndisponible = new Livre();
         livreIndisponible.setBookId(101);
         livreIndisponible.setBookName("Livre Indisponible");
         livreIndisponible.setNoOfCopies(0);
 
-        adherent = new Users();
+        adherent = new Adherent();
         adherent.setUserId(1);
         adherent.setName("Adherent Test");
 
-        when(booksRepository.findById(101)).thenReturn(Optional.of(livreIndisponible));
-        when(usersRepository.findById(1)).thenReturn(Optional.of(adherent));
+        when(livreRepository.findById(101)).thenReturn(Optional.of(livreIndisponible));
+        when(adherentRepository.findById(1)).thenReturn(Optional.of(adherent));
         when(reservationRepository.findByLivre_BookIdAndAdherent_UserIdAndStatutIn(any(), any(), any()))
                 .thenReturn(Collections.emptyList());
     }

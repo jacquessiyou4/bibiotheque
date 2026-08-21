@@ -1,9 +1,9 @@
 package com.ibizabroker.bibliotheque.dao;
 
-import com.ibizabroker.bibliotheque.entity.Books;
+import com.ibizabroker.bibliotheque.entity.Livre;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface BooksRepository extends JpaRepository<Books, Integer> {
+public interface LivreRepository extends JpaRepository<Livre, Integer> {
 }

@@ -1,11 +1,13 @@
 package com.ibizabroker.bibliotheque.controller;
 
-import com.ibizabroker.bibliotheque.dao.BooksRepository;
+import com.ibizabroker.bibliotheque.dao.AdherentRepository;
 import com.ibizabroker.bibliotheque.dao.BorrowRepository;
-import com.ibizabroker.bibliotheque.dao.UsersRepository;
-import com.ibizabroker.bibliotheque.entity.Books;
+import com.ibizabroker.bibliotheque.dao.LivreRepository;
+import com.ibizabroker.bibliotheque.entity.Adherent;
 import com.ibizabroker.bibliotheque.entity.Borrow;
-import com.ibizabroker.bibliotheque.entity.Users;
+import com.ibizabroker.bibliotheque.entity.Livre;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +16,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
+@Tag(name = "Emprunts")
 @Repository
 @RestController
 @RequestMapping("/borrow")
@@ -23,22 +26,23 @@ public class BorrowController {
     private BorrowRepository borrowRepository;
 
     @Autowired
-    private UsersRepository usersRepository;
+    private AdherentRepository adherentRepository;
 
     @Autowired
-    private BooksRepository booksRepository;
+    private LivreRepository livreRepository;
 
+    @Operation(summary = "Emprunter un livre", description = "Enregistre l'emprunt d'un exemplaire par un adhérent, décrémente le nombre de copies disponibles et fixe une échéance à 7 jours.")
     @PostMapping
     public String borrowBook(@RequestBody Borrow borrow) {
-        Users user = usersRepository.findById(borrow.getUserId()).get();
-        Books book = booksRepository.findById(borrow.getBookId()).get();
+        Adherent adherent = adherentRepository.findById(borrow.getUserId()).get();
+        Livre livre = livreRepository.findById(borrow.getBookId()).get();
 
-        if (book.getNoOfCopies() < 1) {
-            return "The book \"" + book.getBookName() + "\" is out of stock!";
+        if (livre.getNoOfCopies() < 1) {
+            return "The book \"" + livre.getBookName() + "\" is out of stock!";
         }
 
-        book.borrowBook();
-        booksRepository.save(book);
+        livre.borrowBook();
+        livreRepository.save(livre);
 
         Date currentDate = new Date();
         Date overdueDate = new Date();
@@ -49,136 +53,39 @@ public class BorrowController {
         borrow.setIssueDate(currentDate);
         borrow.setDueDate(overdueDate);
         borrowRepository.save(borrow);
-        return user.getName() + " has borrowed one copy of \"" + book.getBookName() + "\"!";
+        return adherent.getName() + " has borrowed one copy of \"" + livre.getBookName() + "\"!";
     }
 
+    @Operation(summary = "Lister tous les emprunts", description = "Renvoie l'ensemble des emprunts, rendus ou en cours.")
     @GetMapping
     public List<Borrow> getAllBorrow() {
         return borrowRepository.findAll();
     }
 
+    @Operation(summary = "Rendre un livre", description = "Marque un emprunt comme rendu et incrémente à nouveau le nombre de copies disponibles du livre.")
     @PutMapping
     public Borrow returnBook(@RequestBody Borrow borrow) {
-        Borrow borrowBook = borrowRepository.findById(borrow.getBorrowId()).get();
-        Books book = booksRepository.findById(borrowBook.getBookId()).get();
+        Borrow borrowRecord = borrowRepository.findById(borrow.getBorrowId()).get();
+        Livre livre = livreRepository.findById(borrowRecord.getBookId()).get();
 
-        book.returnBook();
-        booksRepository.save(book);
+        livre.returnBook();
+        livreRepository.save(livre);
 
         Date currentDate = new Date();
-        borrowBook.setReturnDate(currentDate);
-        return borrowRepository.save(borrowBook);
+        borrowRecord.setReturnDate(currentDate);
+        return borrowRepository.save(borrowRecord);
     }
 
+    @Operation(summary = "Emprunts d'un adhérent", description = "Renvoie l'historique des emprunts d'un adhérent donné.")
     @GetMapping("user/{id}")
     public List<Borrow> booksBorrowedByUser(@PathVariable Integer id) {
         return borrowRepository.findByUserId(id);
     }
 
+    @Operation(summary = "Historique d'emprunt d'un livre", description = "Renvoie l'historique des emprunts pour un livre donné.")
     @GetMapping("book/{id}")
     public List<Borrow> bookBorrowHistory(@PathVariable Integer id) {
         return borrowRepository.findByBookId(id);
     }
-
-
-//    @Autowired
-//    private EntityManager entityManager;
-//
-//    @PostMapping
-//    public Borrow borrowBook(@RequestBody Borrow borrow) {
-//        borrowRepository.save(borrow);
-//        Books book = booksRepository.findById(borrow.getBOOKID()).orElseThrow(() -> new NotFoundException("Book not found."));
-//        if(book.getNoOfCopies()-1 < 0) {
-//            throw new IllegalStateException("There are no available books.");
-//        }
-//        book.borrowBook();
-//        booksRepository.save(book);
-//
-//        return borrow;
-//    }
-//
-//    @GetMapping
-//    public List<Borrow> getAllBorrow() {
-//        return borrowRepository.findAll();
-//    }
-//
-//    @PutMapping
-//    public Borrow returnBook(@RequestBody Borrow borrow) {
-//        borrowRepository.save(borrow);
-//        Books book = booksRepository.findById(borrow.getBOOKID()).orElseThrow(() -> new NotFoundException("Book not found."));
-//        book.returnBook();
-//        booksRepository.save(book);
-//
-//        Date currentDate = new Date(new java.util.Date().getTime());
-//        borrow.setReturnDate(currentDate);
-//        return borrow;
-//    }
-//
-//    @GetMapping("user/{id}")
-//    public List<Books> booksBorrowedByUser(@PathVariable Integer id) {
-//        Query q = entityManager.createNativeQuery("SELECT * FROM BOOKS AS B, BORROW AS L WHERE B.book_id = L.BOOKID AND L.USERID = " + id);
-//        List<Books> borrowedBooks = q.getResultList();
-//        return borrowedBooks;
-//    }
-//
-//    @GetMapping("book/{id}")
-//    public List<Users> bookBorrowHistory(@PathVariable Integer id) {
-//        Query q = entityManager.createNativeQuery("SELECT * FROM USERS AS U, BORROW AS L WHERE U.user_id = L.USERID AND L.BOOKID = " + id);
-//        List<Users> usersList = q.getResultList();
-//        return usersList;
-//    }
-
-//    @PostMapping
-//    public Borrow borrowBook(@RequestBody Borrow borrow) {
-//        borrow(borrow.getBorrowId(), borrow.getUser().getUserId(), borrow.getBook().getBookId());
-//        return borrow;
-//    }
-//
-//    @GetMapping
-//    public List<Borrow> getAllBorrow() {
-//        return borrowRepository.findAll();
-//    }
-//
-//    @PutMapping
-//    public Borrow returnBook(@RequestBody Borrow borrow) {
-//        Books book = booksRepository.findById(borrow.getBook().getBookId()).orElseThrow(() -> new NotFoundException("Book not found."));
-//        book.returnBook();
-//        booksRepository.save(book);
-//
-//        Date currentDate = new Date(new java.util.Date().getTime());
-//        borrow.setReturnDate(currentDate);
-//        return borrowRepository.save(borrow);
-//    }
-//
-//    @GetMapping("user/{id}")
-//    public List<Books> booksBorrowedByUser(@PathVariable Integer id) {
-//        Users user = usersRepository.findById(id).orElseThrow(() -> new NotFoundException("User not found."));
-//        return user.getBooks();
-//    }
-//
-//    @GetMapping("book/{id}")
-//    public List<Users> bookBorrowHistory(@PathVariable Integer id) {
-//        Books book = booksRepository.findById(id).orElseThrow(() -> new NotFoundException("Book not found."));
-//        return book.getUsers();
-//    }
-//
-//    public void borrow(Integer borrowId, Integer userId, Integer bookId) {
-//        Users user = usersRepository.findById(userId).orElseThrow(() -> new NotFoundException("User not found."));
-//        if(user.getBooks().stream().anyMatch(book -> Objects.equals(book.getBookId(), bookId))) {
-//            throw new IllegalStateException("User already borrowed the book");
-//        }
-//
-//        Books book = booksRepository.findById(bookId).orElseThrow(() -> new NotFoundException("Book not found."));
-//        if(book.getNoOfCopies()-1 < 0) {
-//            throw new IllegalStateException("There are no available books.");
-//        }
-//
-//        book.getUsers().add(user);
-//        book.setNoOfCopies(book.getNoOfCopies()-1);
-//        booksRepository.save(book);
-//
-//        user.getBooks().add(book);
-//        usersRepository.save(user);
-//    }
 
 }

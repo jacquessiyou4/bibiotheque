@@ -14,8 +14,10 @@ public class ReservationResponse {
     private Integer id;
     private Integer livreId;
     private String livreNom;
+    private String livreMatricule;
     private Integer adherentId;
     private String adherentNom;
+    private String adherentMatricule;
     private LocalDateTime dateReservation;
     private LocalDateTime dateExpiration;
     private StatutReservation statut;

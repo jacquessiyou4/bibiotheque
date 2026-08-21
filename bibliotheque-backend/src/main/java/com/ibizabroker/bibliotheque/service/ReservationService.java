@@ -1,14 +1,14 @@
 package com.ibizabroker.bibliotheque.service;
 
-import com.ibizabroker.bibliotheque.dao.BooksRepository;
+import com.ibizabroker.bibliotheque.dao.LivreRepository;
 import com.ibizabroker.bibliotheque.dao.ReservationRepository;
-import com.ibizabroker.bibliotheque.dao.UsersRepository;
+import com.ibizabroker.bibliotheque.dao.AdherentRepository;
 import com.ibizabroker.bibliotheque.dto.ReservationRequest;
 import com.ibizabroker.bibliotheque.dto.ReservationResponse;
-import com.ibizabroker.bibliotheque.entity.Books;
+import com.ibizabroker.bibliotheque.entity.Livre;
 import com.ibizabroker.bibliotheque.entity.Reservation;
 import com.ibizabroker.bibliotheque.entity.StatutReservation;
-import com.ibizabroker.bibliotheque.entity.Users;
+import com.ibizabroker.bibliotheque.entity.Adherent;
 import com.ibizabroker.bibliotheque.exceptions.BadRequestException;
 import com.ibizabroker.bibliotheque.exceptions.ConflictException;
 import com.ibizabroker.bibliotheque.exceptions.NotFoundException;
@@ -33,10 +33,10 @@ public class ReservationService {
     private ReservationRepository reservationRepository;
 
     @Autowired
-    private BooksRepository booksRepository;
+    private LivreRepository livreRepository;
 
     @Autowired
-    private UsersRepository usersRepository;
+    private AdherentRepository adherentRepository;
 
     public ReservationResponse creer(ReservationRequest request) {
         if (request.getLivreId() == null) {
@@ -46,9 +46,9 @@ public class ReservationService {
             throw new BadRequestException("adherentId est obligatoire");
         }
 
-        Books livre = booksRepository.findById(request.getLivreId())
+        Livre livre = livreRepository.findById(request.getLivreId())
                 .orElseThrow(() -> new NotFoundException("Livre avec id " + request.getLivreId() + " introuvable."));
-        Users adherent = usersRepository.findById(request.getAdherentId())
+        Adherent adherent = adherentRepository.findById(request.getAdherentId())
                 .orElseThrow(() -> new NotFoundException("Adherent avec id " + request.getAdherentId() + " introuvable."));
 
         if (livre.getNoOfCopies() >= 1) {
@@ -140,8 +140,10 @@ public class ReservationService {
                 reservation.getId(),
                 reservation.getLivre().getBookId(),
                 reservation.getLivre().getBookName(),
+                reservation.getLivre().getMatricule(),
                 reservation.getAdherent().getUserId(),
                 reservation.getAdherent().getName(),
+                reservation.getAdherent().getMatricule(),
                 reservation.getDateReservation(),
                 reservation.getDateExpiration(),
                 reservation.getStatut()

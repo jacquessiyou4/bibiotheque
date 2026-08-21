@@ -16,11 +16,11 @@ public class Reservation {
 
     @ManyToOne
     @JoinColumn(name = "book_id", nullable = false)
-    private Books livre;
+    private Livre livre;
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
-    private Users adherent;
+    private Adherent adherent;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime dateReservation;

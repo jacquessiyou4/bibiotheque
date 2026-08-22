@@ -17,6 +17,9 @@ public class JwtUtil {
     private static final String SECRET_KEY = "learn_programming_yourself";
 
     private static final int TOKEN_VALIDITY = 3600 * 5;
+    private static final int REFRESH_TOKEN_VALIDITY = 3600 * 24 * 7;
+    private static final int RESET_TOKEN_VALIDITY = 60 * 15;
+    private static final String TYPE_CLAIM = "type";
 
     public String getUsernameFromToken(String token) {
         return getClaimFromToken(token, Claims::getSubject);
@@ -54,6 +57,32 @@ public class JwtUtil {
                 .setSubject(userDetails.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + TOKEN_VALIDITY * 1000))
+                .signWith(SignatureAlgorithm.HS512, SECRET_KEY)
+                .compact();
+    }
+
+    public String generateRefreshToken(String username) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put(TYPE_CLAIM, "refresh");
+        return buildToken(username, claims, REFRESH_TOKEN_VALIDITY);
+    }
+
+    public String generateResetToken(String username) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put(TYPE_CLAIM, "reset");
+        return buildToken(username, claims, RESET_TOKEN_VALIDITY);
+    }
+
+    public String getTokenType(String token) {
+        return (String) getAllClaimsFromToken(token).get(TYPE_CLAIM);
+    }
+
+    private String buildToken(String subject, Map<String, Object> claims, int validitySeconds) {
+        return Jwts.builder()
+                .setClaims(claims)
+                .setSubject(subject)
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + validitySeconds * 1000L))
                 .signWith(SignatureAlgorithm.HS512, SECRET_KEY)
                 .compact();
     }

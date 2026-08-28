@@ -11,10 +11,17 @@ import { UsersService } from '../_service/users.service';
 export class RegistrationComponent implements OnInit {
 
   user: Users = new Users();
+  showPassword = false;
+  selectedRole: 'Admin' | 'User' = 'User';
+
   constructor(private usersService: UsersService,
     private router: Router) { }
 
   ngOnInit(): void {
+  }
+
+  togglePasswordVisibility() {
+    this.showPassword = !this.showPassword;
   }
 
   saveUser() {
@@ -30,7 +37,7 @@ export class RegistrationComponent implements OnInit {
   }
 
   onSubmit() {
-    console.log(this.user);
+    this.user.role = [{ roleName: this.selectedRole }];
     this.saveUser();
   }
 

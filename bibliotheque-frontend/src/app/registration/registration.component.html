@@ -1,27 +1,33 @@
 <div class="container col-md-6 offset-mid-3">
-    <h3 class="text-center"> Add User </h3>
+    <h3 class="text-center"> {{ 'registration.title' | translate }} </h3>
     <form (ngSubmit) = "onSubmit()" autocomplete="off">
 
         <div class="form-group">
-            <label style="margin-bottom: 10px"> Name </label>
+            <label style="margin-bottom: 10px"> {{ 'registration.name' | translate }} </label>
             <input type="text" class="form-control" style="margin-bottom: 10px" id="name" [(ngModel)] = "user.name" name="name">
         </div>
 
         <div class="form-group">
-            <label style="margin-bottom: 10px"> Username </label>
+            <label style="margin-bottom: 10px"> {{ 'registration.username' | translate }} </label>
             <input type="text" class="form-control" style="margin-bottom: 10px" id="username" [(ngModel)] = "user.username" name="username">
         </div>
 
         <div class="form-group">
-            <label style="margin-bottom: 10px"> Password </label>
-            <input type="password" class="form-control" style="margin-bottom: 10px" id="password" [(ngModel)] = "user.password" name="password">
+            <label style="margin-bottom: 10px"> {{ 'registration.password' | translate }} </label>
+            <div class="input-group" style="margin-bottom: 10px">
+                <input [type]="showPassword ? 'text' : 'password'" class="form-control" id="password" [(ngModel)] = "user.password" name="password">
+                <button type="button" class="btn btn-outline-secondary" (click)="togglePasswordVisibility()">{{ (showPassword ? 'login.hide' : 'login.show') | translate }}</button>
+            </div>
         </div>
 
         <div class="form-group">
-            <label style="margin-bottom: 10px"> Role (Admin, User) </label>
-            <input type="text" class="form-control" style="margin-bottom: 10px" id="role" [(ngModel)] = "user.role[0].roleName" name="role">
+            <label style="margin-bottom: 10px"> {{ 'registration.role' | translate }} </label>
+            <select class="form-select" style="margin-bottom: 10px" id="role" [(ngModel)]="selectedRole" name="role">
+                <option value="Admin">Admin</option>
+                <option value="User">User</option>
+            </select>
         </div>
 
-        <button class="btn btn-success" type="submit"> Submit </button>
+        <button class="btn btn-success" type="submit"> {{ 'form.submit' | translate }} </button>
     </form>
 </div>

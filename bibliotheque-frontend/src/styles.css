@@ -1,2 +1,30 @@
 /* You can add global styles to this file, and also import other style files */
-@import "~bootstrap/dist/css/bootstrap.min.css"
+@import "~bootstrap/dist/css/bootstrap.min.css";
+
+/* Thème clair/sombre. Le défaut (aucun attribut data-theme) reproduit
+   l'apparence sombre historique de l'app, pour ne rien changer tant que
+   l'utilisateur n'a pas choisi explicitement le mode clair. */
+:root {
+  --bg: #1a1a1b;
+  --text: #ffffff;
+  --surface: #242426;
+  --surface-border: #3a3a3c;
+  --muted: #adb5bd;
+}
+
+:root[data-theme="light"] {
+  --bg: #ffffff;
+  --text: #1a1a1b;
+  --surface: #f8f9fa;
+  --surface-border: #dee2e6;
+  --muted: #6c757d;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+.form-text {
+  color: var(--muted) !important;
+}

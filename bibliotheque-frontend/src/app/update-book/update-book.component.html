@@ -1,27 +1,27 @@
 <div class="container col-md-6 offset-mid-3">
-    <h3> Edit Book </h3>
+    <h3> {{ 'updateBook.title' | translate }} </h3>
     <form (ngSubmit) = "onSubmit()">
 
         <div class="form-group">
-            <label style="margin-bottom: 10px"> Book Name </label>
+            <label style="margin-bottom: 10px"> {{ 'book.bookName' | translate }} </label>
             <input type="text" class="form-control" style="margin-bottom: 10px" id="bookName" [(ngModel)] = "book.bookName" name="bookName">
         </div>
 
         <div class="form-group">
-            <label style="margin-bottom: 10px"> Author </label>
+            <label style="margin-bottom: 10px"> {{ 'book.author' | translate }} </label>
             <input type="text" class="form-control" style="margin-bottom: 10px" id="bookAuthor" [(ngModel)] = "book.bookAuthor" name="bookAuthor">
         </div>
 
         <div class="form-group">
-            <label style="margin-bottom: 10px"> Genre </label>
+            <label style="margin-bottom: 10px"> {{ 'book.genre' | translate }} </label>
             <input type="text" class="form-control" style="margin-bottom: 10px" id="bookGenre" [(ngModel)] = "book.bookGenre" name="bookGenre">
         </div>
 
         <div class="form-group">
-            <label style="margin-bottom: 10px"> Number of Copies </label>
+            <label style="margin-bottom: 10px"> {{ 'book.copies' | translate }} </label>
             <input type="text" class="form-control" style="margin-bottom: 10px" id="noOfCopies" [(ngModel)] = "book.noOfCopies" name="noOfCopies">
         </div>
 
-        <button class="btn btn-success" type="submit"> Submit </button>
+        <button class="btn btn-success" type="submit"> {{ 'form.submit' | translate }} </button>
     </form>
 </div>

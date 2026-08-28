@@ -11,12 +11,18 @@ import { UsersService } from '../_service/users.service';
 })
 export class LoginComponent implements OnInit {
 
+  showPassword = false;
+
   constructor(private userService: UsersService,
     private userAuthSerivce: UserAuthService,
     private router: Router
   ) { }
 
   ngOnInit() {
+  }
+
+  togglePasswordVisibility() {
+    this.showPassword = !this.showPassword;
   }
 
   login(loginForm: NgForm) {

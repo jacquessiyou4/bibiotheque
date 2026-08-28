@@ -1,10 +1,10 @@
-<h2>Borrow history of {{ user.name }}</h2>
+<h2>{{ 'bookDetails.borrowHistoryOf' | translate }} {{ user.name }}</h2>
 <table class="table table-info table-striped">
     <thead>
         <tr>
-            <th> Book ID </th>
-            <th> Issue Date </th>
-            <th> Return Date </th>
+            <th> {{ 'history.bookId' | translate }} </th>
+            <th> {{ 'history.issueDate' | translate }} </th>
+            <th> {{ 'history.returnDate' | translate }} </th>
         </tr>
     </thead>
     <tbody>
@@ -15,7 +15,7 @@
                 <td> {{ borrower.returnDate }} </td>
             </div>
             <div *ngIf="borrower.returnDate === null">
-                <td> Book not returned yet </td>
+                <td> {{ 'history.notReturned' | translate }} </td>
             </div>
         </tr>
     </tbody>

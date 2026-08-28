@@ -1,0 +1,41 @@
+<form (ngSubmit)="onSubmit()" autocomplete="off">
+  <div class="row g-3 align-items-end">
+
+    <div class="col-12 col-md-4">
+      <label for="livreId" class="form-label">{{ 'reservations.book' | translate }}</label>
+      <select id="livreId" class="form-select" name="livreId" [(ngModel)]="livreId">
+        <option [ngValue]="null">{{ 'reservations.chooseBook' | translate }}</option>
+        <option *ngFor="let livre of livres" [ngValue]="livre.bookId">
+          {{ livre.bookName }} ({{ livre.noOfCopies }})
+        </option>
+      </select>
+    </div>
+
+    <div class="col-12 col-md-4">
+      <label for="adherentId" class="form-label">{{ 'reservations.adherent' | translate }}</label>
+      <select id="adherentId" class="form-select" name="adherentId" [(ngModel)]="adherentId" (ngModelChange)="onAdherentChange()">
+        <option [ngValue]="null">{{ 'reservations.chooseAdherent' | translate }}</option>
+        <option *ngFor="let adherent of adherents" [ngValue]="adherent.userId">
+          {{ adherent.name }}
+        </option>
+      </select>
+      <div class="form-text" *ngIf="loadingCount">{{ 'reservations.checkingQuota' | translate }}</div>
+      <div class="form-text" [class.text-danger]="quotaAtteint" [class.fw-bold]="quotaAtteint" *ngIf="activeCount !== null && !loadingCount">
+        {{ activeCount }} / 3 {{ 'reservations.quota' | translate }}
+        <span *ngIf="quotaAtteint">{{ 'reservations.quotaReached' | translate }}</span>
+      </div>
+    </div>
+
+    <div class="col-12 col-md-4">
+      <button type="submit" class="btn btn-success w-100" [disabled]="!formValide || submitting">
+        <span *ngIf="submitting" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+        {{ 'reservations.reserve' | translate }}
+      </button>
+    </div>
+
+  </div>
+
+  <div class="alert alert-danger mt-3 mb-0" role="alert" *ngIf="errorMessage">
+    {{ errorMessage }}
+  </div>
+</form>

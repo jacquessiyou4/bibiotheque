@@ -9,40 +9,54 @@
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
 
           <li class="nav-item">
-            <a routerLink="/books" routerLinkActive="active" class="nav-link" *ngIf="userService.roleMatch(['Admin'])">Book List</a>
+            <a routerLink="/books" routerLinkActive="active" class="nav-link" *ngIf="userService.roleMatch(['Admin'])">{{ 'nav.bookList' | translate }}</a>
           </li>
 
           <li class="nav-item">
-            <a routerLink="/create-book" routerLinkActive="active" class="nav-link" *ngIf="userService.roleMatch(['Admin'])">Add Book</a>
+            <a routerLink="/create-book" routerLinkActive="active" class="nav-link" *ngIf="userService.roleMatch(['Admin'])">{{ 'nav.addBook' | translate }}</a>
           </li>
 
           <li class="nav-item">
-            <a routerLink="/users" routerLinkActive="active" class="nav-link" *ngIf="userService.roleMatch(['Admin'])">User List</a>
+            <a routerLink="/users" routerLinkActive="active" class="nav-link" *ngIf="userService.roleMatch(['Admin'])">{{ 'nav.userList' | translate }}</a>
           </li>
 
           <li class="nav-item">
-            <a routerLink="/register-user" routerLinkActive="active" class="nav-link" *ngIf="userService.roleMatch(['Admin'])">Register User</a>
+            <a routerLink="/register-user" routerLinkActive="active" class="nav-link" *ngIf="userService.roleMatch(['Admin'])">{{ 'nav.registerUser' | translate }}</a>
           </li>
 
           <li class="nav-item">
-            <a routerLink="/borrow-book" routerLinkActive="active" class="nav-link" *ngIf="userService.roleMatch(['User'])">Borrow Books</a>
+            <a routerLink="/reservations" routerLinkActive="active" class="nav-link" *ngIf="userService.roleMatch(['Admin'])">{{ 'nav.reservations' | translate }}</a>
           </li>
 
           <li class="nav-item">
-            <a routerLink="/return-book" routerLinkActive="active" class="nav-link" *ngIf="userService.roleMatch(['User'])">Return Books</a>
+            <a routerLink="/borrow-list" routerLinkActive="active" class="nav-link" *ngIf="userService.roleMatch(['Admin'])">{{ 'nav.borrowList' | translate }}</a>
+          </li>
+
+          <li class="nav-item">
+            <a routerLink="/borrow-book" routerLinkActive="active" class="nav-link" *ngIf="userService.roleMatch(['User'])">{{ 'nav.borrowBooks' | translate }}</a>
+          </li>
+
+          <li class="nav-item">
+            <a routerLink="/return-book" routerLinkActive="active" class="nav-link" *ngIf="userService.roleMatch(['User'])">{{ 'nav.returnBooks' | translate }}</a>
           </li>
 
           <li class="nav-item right-text" *ngIf="isLoggedIn()">
             <div class="nav-link disabled text-right">
               <strong>
-                Hey {{name}}
+                {{ 'nav.hey' | translate }} {{name}}
               </strong>
             </div>
           </li>
 
         </ul>
-        <button *ngIf="!isLoggedIn()" type="button" class="btn btn-success" routerLink="/login">Login</button>
-        <button *ngIf="isLoggedIn()" type="button" class="btn btn-danger" (click)="logout()">Logout</button>
+        <button type="button" class="btn btn-outline-light btn-sm me-2" (click)="toggleLang()">
+          {{ translationService.getLang() === 'en' ? '🇫🇷 FR' : '🇬🇧 EN' }}
+        </button>
+        <button type="button" class="btn btn-outline-light btn-sm me-2" (click)="toggleTheme()">
+          {{ themeService.getTheme() === 'dark' ? '☀️' : '🌙' }} {{ (themeService.getTheme() === 'dark' ? 'theme.toggleToLight' : 'theme.toggleToDark') | translate }}
+        </button>
+        <button *ngIf="!isLoggedIn()" type="button" class="btn btn-success" routerLink="/login">{{ 'nav.login' | translate }}</button>
+        <button *ngIf="isLoggedIn()" type="button" class="btn btn-danger" (click)="logout()">{{ 'nav.logout' | translate }}</button>
       </div>
     </div>
   </nav>

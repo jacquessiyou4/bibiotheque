@@ -24,13 +24,15 @@ export class AuthInterceptor implements HttpInterceptor {
     return next.handle(req).pipe(
         catchError(
             (err:HttpErrorResponse) => {
-                console.log(err.status);
                 if(err.status === 401) {
                     this.router.navigate(['/login']);
                 } else if(err.status === 403) {
                     this.router.navigate(['/forbidden']);
                 }
-                return throwError("Some thing is wrong");
+                // On repasse l'erreur HTTP telle quelle (statut + corps) : les
+                // écrans qui en ont besoin (ex. réservations) affichent le
+                // message renvoyé par le serveur pour les 400/404/409.
+                return throwError(() => err);
             }
         )
     );

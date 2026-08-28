@@ -13,6 +13,8 @@ import { UpdateBookComponent } from './update-book/update-book.component';
 import { UpdateUserComponent } from './update-user/update-user.component';
 import { UserDetailsComponent } from './user-details/user-details.component';
 import { UsersListComponent } from './users-list/users-list.component';
+import { ReservationsComponent } from './reservations/reservations.component';
+import { BorrowListComponent } from './borrow-list/borrow-list.component';
 import { AuthGuard } from './_auth/auth.guard';
 
 const routes: Routes = [
@@ -28,7 +30,9 @@ const routes: Routes = [
   {path: 'login', component: LoginComponent},
   {path: 'forbidden', component: ForbiddenComponent},
   {path: 'borrow-book', component: BorrowBookComponent, canActivate:[AuthGuard], data:{roles:['User']}},
-  {path: 'return-book', component: ReturnBookComponent, canActivate:[AuthGuard], data:{roles:['User']}}
+  {path: 'return-book', component: ReturnBookComponent, canActivate:[AuthGuard], data:{roles:['User']}},
+  {path: 'reservations', component: ReservationsComponent, canActivate:[AuthGuard], data:{roles:['Admin']}},
+  {path: 'borrow-list', component: BorrowListComponent, canActivate:[AuthGuard], data:{roles:['Admin']}}
 ];
 
 @NgModule({

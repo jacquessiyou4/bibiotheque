@@ -1,0 +1,51 @@
+<div class="table-responsive">
+  <table class="table table-success table-striped align-middle">
+    <thead>
+      <tr>
+        <th>{{ 'reservations.book' | translate }}</th>
+        <th>{{ 'reservations.adherent' | translate }}</th>
+        <th>{{ 'reservations.status' | translate }}</th>
+        <th>{{ 'reservations.reservationDate' | translate }}</th>
+        <th class="sortable" (click)="toggleTri()" role="button">
+          {{ 'reservations.expirationDate' | translate }}
+          <span>{{ triParExpirationAsc ? '▲' : '▼' }}</span>
+        </th>
+        <th>{{ 'reservations.action' | translate }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let reservation of reservationsPage">
+        <td data-label="Livre">{{ reservation.livreNom }}</td>
+        <td data-label="Adhérent">{{ reservation.adherentNom }}</td>
+        <td data-label="Statut">
+          <span class="badge" [ngClass]="badgeClasse(reservation.statut)">{{ reservation.statut }}</span>
+        </td>
+        <td data-label="Date de réservation">{{ reservation.dateReservation | date:'dd/MM/yyyy HH:mm' }}</td>
+        <td data-label="Date d'expiration">{{ reservation.dateExpiration | date:'dd/MM/yyyy HH:mm' }}</td>
+        <td data-label="Action">
+          <button *ngIf="peutAnnuler(reservation)"
+                  class="btn btn-outline-danger btn-sm"
+                  [disabled]="cancellingId === reservation.id"
+                  (click)="onAnnuler(reservation)">
+            <span *ngIf="cancellingId === reservation.id" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+            {{ 'reservations.cancel' | translate }}
+          </button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<nav *ngIf="totalPages > 1" aria-label="Pagination des réservations">
+  <ul class="pagination justify-content-center flex-wrap">
+    <li class="page-item" [class.disabled]="page === 1">
+      <button class="page-link" (click)="pagePrecedente()">{{ 'reservations.previous' | translate }}</button>
+    </li>
+    <li class="page-item disabled">
+      <span class="page-link">{{ 'reservations.page' | translate }} {{ page }} / {{ totalPages }}</span>
+    </li>
+    <li class="page-item" [class.disabled]="page === totalPages">
+      <button class="page-link" (click)="pageSuivante()">{{ 'reservations.next' | translate }}</button>
+    </li>
+  </ul>
+</nav>

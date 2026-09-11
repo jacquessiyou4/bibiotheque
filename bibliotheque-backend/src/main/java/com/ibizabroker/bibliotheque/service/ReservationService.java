@@ -11,6 +11,7 @@ import com.ibizabroker.bibliotheque.entity.StatutReservation;
 import com.ibizabroker.bibliotheque.entity.Users;
 import com.ibizabroker.bibliotheque.exceptions.BadRequestException;
 import com.ibizabroker.bibliotheque.exceptions.ConflictException;
+import com.ibizabroker.bibliotheque.exceptions.ForbiddenException;
 import com.ibizabroker.bibliotheque.exceptions.NotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -38,18 +39,31 @@ public class ReservationService {
     @Autowired
     private UsersRepository usersRepository;
 
-    public ReservationResponse creer(ReservationRequest request) {
+    /**
+     * Crée une réservation. L'identité de l'adhérent vient du token
+     * (RS-04) : un ADHERENT ne peut réserver que pour lui-même, le
+     * champ adherentId du corps de la requête est alors ignoré.
+     * Seul un BIBLIOTHECAIRE peut créer une réservation pour autrui.
+     */
+    public ReservationResponse creer(ReservationRequest request, boolean estBibliothecaire, String usernameConnecte) {
         if (request.getLivreId() == null) {
             throw new BadRequestException("livreId est obligatoire");
         }
-        if (request.getAdherentId() == null) {
-            throw new BadRequestException("adherentId est obligatoire");
+
+        Integer adherentCibleId;
+        if (estBibliothecaire) {
+            if (request.getAdherentId() == null) {
+                throw new BadRequestException("adherentId est obligatoire");
+            }
+            adherentCibleId = request.getAdherentId();
+        } else {
+            adherentCibleId = resoudreAdherentConnecte(usernameConnecte).getUserId();
         }
 
         Books livre = booksRepository.findById(request.getLivreId())
                 .orElseThrow(() -> new NotFoundException("Livre avec id " + request.getLivreId() + " introuvable."));
-        Users adherent = usersRepository.findById(request.getAdherentId())
-                .orElseThrow(() -> new NotFoundException("Adhérent avec id " + request.getAdherentId() + " introuvable."));
+        Users adherent = usersRepository.findById(adherentCibleId)
+                .orElseThrow(() -> new NotFoundException("Adhérent avec id " + adherentCibleId + " introuvable."));
 
         if (livre.getNoOfCopies() != null && livre.getNoOfCopies() >= 1) {
             throw new ConflictException("RG-01: le livre \"" + livre.getBookName() + "\" est disponible, la réservation est refusée.");
@@ -81,8 +95,17 @@ public class ReservationService {
         return versDto(saved);
     }
 
-    public List<ReservationResponse> lister(StatutReservation statut, Integer adherentId) {
+    /**
+     * Liste les réservations. Un ADHERENT ne voit que les siennes (RS-05),
+     * même s'il tente de filtrer via adherentId. Un BIBLIOTHECAIRE peut
+     * tout voir et filtrer par adhérent.
+     */
+    public List<ReservationResponse> lister(StatutReservation statut, Integer adherentId,
+                                            boolean estBibliothecaire, String usernameConnecte) {
         List<Reservation> reservations;
+        if (!estBibliothecaire) {
+            adherentId = resoudreAdherentConnecte(usernameConnecte).getUserId();
+        }
         if (statut != null && adherentId != null) {
             reservations = reservationRepository.findByStatutAndAdherent_UserId(statut, adherentId);
         } else if (statut != null) {
@@ -95,8 +118,14 @@ public class ReservationService {
         return reservations.stream().map(this::versDto).collect(Collectors.toList());
     }
 
-    public ReservationResponse consulter(Integer id) {
-        return versDto(trouverParId(id));
+    /**
+     * Consulte une réservation. Un ADHERENT n'y accède que si elle lui
+     * appartient (RS-03), sinon 403.
+     */
+    public ReservationResponse consulter(Integer id, boolean estBibliothecaire, String usernameConnecte) {
+        Reservation reservation = trouverParId(id);
+        verifierPropriete(reservation, estBibliothecaire, usernameConnecte);
+        return versDto(reservation);
     }
 
     public List<ReservationResponse> listerExpirees() {
@@ -113,8 +142,13 @@ public class ReservationService {
         reservationRepository.saveAll(aExpirer);
     }
 
-    public ReservationResponse annuler(Integer id) {
+    /**
+     * Annule une réservation. Un ADHERENT ne peut annuler que la sienne
+     * (RS-03), sinon 403.
+     */
+    public ReservationResponse annuler(Integer id, boolean estBibliothecaire, String usernameConnecte) {
         Reservation reservation = trouverParId(id);
+        verifierPropriete(reservation, estBibliothecaire, usernameConnecte);
 
         if (!STATUTS_ACTIFS.contains(reservation.getStatut())) {
             throw new ConflictException("RG-05/RG-06: la réservation est au statut " + reservation.getStatut()
@@ -133,6 +167,30 @@ public class ReservationService {
     private Reservation trouverParId(Integer id) {
         return reservationRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Réservation avec id " + id + " introuvable."));
+    }
+
+    /**
+     * Vérifie la propriété d'une réservation : un BIBLIOTHECAIRE passe
+     * toujours, un ADHERENT uniquement si la réservation lui appartient.
+     */
+    private void verifierPropriete(Reservation reservation, boolean estBibliothecaire, String usernameConnecte) {
+        if (estBibliothecaire) {
+            return;
+        }
+        Users adherent = resoudreAdherentConnecte(usernameConnecte);
+        if (!adherent.getUserId().equals(reservation.getAdherent().getUserId())) {
+            throw new ForbiddenException("Accès refusé : cette réservation ne vous appartient pas.");
+        }
+    }
+
+    /**
+     * Résout l'utilisateur local de l'application à partir du compte
+     * Keycloak authentifié (preferred_username du token).
+     */
+    private Users resoudreAdherentConnecte(String usernameConnecte) {
+        return usersRepository.findByUsername(usernameConnecte)
+                .orElseThrow(() -> new ForbiddenException(
+                        "Aucun compte adhérent local pour le compte Keycloak « " + usernameConnecte + " »."));
     }
 
     private ReservationResponse versDto(Reservation reservation) {

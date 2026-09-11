@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,74 +21,95 @@ import java.util.List;
 @CrossOrigin("http://localhost:4200/")
 @RestController
 @RequestMapping("/api/reservations")
-@PreAuthorize("hasRole('Admin')")
 public class ReservationController {
 
     @Autowired
     private ReservationService reservationService;
 
-    @Operation(summary = "Créer une réservation")
+    @Operation(summary = "Créer une réservation (un ADHERENT seulement pour lui-même, RS-04)")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Réservation créée"),
             @ApiResponse(responseCode = "400", description = "livreId ou adherentId manquant"),
+            @ApiResponse(responseCode = "403", description = "Action non autorisée pour ce rôle"),
             @ApiResponse(responseCode = "404", description = "Livre ou adhérent introuvable"),
             @ApiResponse(responseCode = "409", description = "Règle de gestion violée (RG-01, RG-02 ou RG-03)")
     })
     @PostMapping
-    public ResponseEntity<ReservationResponse> creer(@RequestBody ReservationRequest request) {
-        ReservationResponse response = reservationService.creer(request);
+    @PreAuthorize("hasAnyRole('ADHERENT', 'BIBLIOTHECAIRE')")
+    public ResponseEntity<ReservationResponse> creer(Authentication authentication,
+                                                     @RequestBody ReservationRequest request) {
+        ReservationResponse response = reservationService.creer(request,
+                estBibliothecaire(authentication), authentication.getName());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @Operation(summary = "Lister les réservations, filtrable par statut et par adhérent")
+    @Operation(summary = "Lister les réservations (un ADHERENT ne voit que les siennes, RS-05)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Liste des réservations")
     })
     @GetMapping
-    public ResponseEntity<List<ReservationResponse>> lister(
+    @PreAuthorize("hasAnyRole('ADHERENT', 'BIBLIOTHECAIRE')")
+    public ResponseEntity<List<ReservationResponse>> lister(Authentication authentication,
             @RequestParam(required = false) StatutReservation statut,
             @RequestParam(required = false) Integer adherentId) {
-        return ResponseEntity.ok(reservationService.lister(statut, adherentId));
+        return ResponseEntity.ok(reservationService.lister(statut, adherentId,
+                estBibliothecaire(authentication), authentication.getName()));
     }
 
-    @Operation(summary = "Lister les réservations expirées")
+    @Operation(summary = "Lister les réservations expirées (bibliothécaire uniquement)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Réservations expirées")
     })
     @GetMapping("/expirees")
+    @PreAuthorize("hasRole('BIBLIOTHECAIRE')")
     public ResponseEntity<List<ReservationResponse>> listerExpirees() {
         return ResponseEntity.ok(reservationService.listerExpirees());
     }
 
-    @Operation(summary = "Consulter une réservation")
+    @Operation(summary = "Consulter une réservation (un ADHERENT uniquement la sienne, RS-03)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Réservation trouvée"),
+            @ApiResponse(responseCode = "403", description = "Réservation d'un autre adhérent"),
             @ApiResponse(responseCode = "404", description = "Réservation introuvable")
     })
     @GetMapping("/{id}")
-    public ResponseEntity<ReservationResponse> consulter(@PathVariable Integer id) {
-        return ResponseEntity.ok(reservationService.consulter(id));
+    @PreAuthorize("hasAnyRole('ADHERENT', 'BIBLIOTHECAIRE')")
+    public ResponseEntity<ReservationResponse> consulter(Authentication authentication,
+                                                         @PathVariable Integer id) {
+        return ResponseEntity.ok(reservationService.consulter(id,
+                estBibliothecaire(authentication), authentication.getName()));
     }
 
-    @Operation(summary = "Annuler une réservation")
+    @Operation(summary = "Annuler une réservation (un ADHERENT uniquement la sienne, RS-03)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Réservation annulée"),
+            @ApiResponse(responseCode = "403", description = "Réservation d'un autre adhérent"),
             @ApiResponse(responseCode = "404", description = "Réservation introuvable"),
             @ApiResponse(responseCode = "409", description = "Statut ne permettant pas l'annulation (RG-05 / RG-06)")
     })
     @PatchMapping("/{id}/annuler")
-    public ResponseEntity<ReservationResponse> annuler(@PathVariable Integer id) {
-        return ResponseEntity.ok(reservationService.annuler(id));
+    @PreAuthorize("hasAnyRole('ADHERENT', 'BIBLIOTHECAIRE')")
+    public ResponseEntity<ReservationResponse> annuler(Authentication authentication,
+                                                       @PathVariable Integer id) {
+        return ResponseEntity.ok(reservationService.annuler(id,
+                estBibliothecaire(authentication), authentication.getName()));
     }
 
-    @Operation(summary = "Supprimer une réservation")
+    @Operation(summary = "Supprimer une réservation (bibliothécaire uniquement)")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "Réservation supprimée"),
+            @ApiResponse(responseCode = "403", description = "Action réservée au bibliothécaire (RS-02)"),
             @ApiResponse(responseCode = "404", description = "Réservation introuvable")
     })
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('BIBLIOTHECAIRE')")
     public ResponseEntity<Void> supprimer(@PathVariable Integer id) {
         reservationService.supprimer(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private boolean estBibliothecaire(Authentication authentication) {
+        return authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_BIBLIOTHECAIRE".equals(authority.getAuthority()));
     }
 }

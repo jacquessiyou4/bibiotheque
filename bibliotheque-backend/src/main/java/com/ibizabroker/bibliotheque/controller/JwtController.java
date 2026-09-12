@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Authentification")
 @RestController
-@CrossOrigin
 //@RequestMapping("/")
 public class JwtController {
 

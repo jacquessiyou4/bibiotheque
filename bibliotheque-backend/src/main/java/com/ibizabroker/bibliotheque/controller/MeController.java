@@ -5,7 +5,6 @@ import com.ibizabroker.bibliotheque.entity.Users;
 import com.ibizabroker.bibliotheque.exceptions.NotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -16,7 +15,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Tag(name = "Utilisateur courant")
-@CrossOrigin("http://localhost:4200/")
 @RestController
 public class MeController {
 

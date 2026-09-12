@@ -25,7 +25,7 @@ public class Users {
     @JsonIgnore
     @Size(min = 6, message = "Le mot de passe doit contenir au moins 6 caractères")
     private String password;
-    @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @ManyToMany(fetch = FetchType.EAGER, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinTable(name = "USER_ROLE",
             joinColumns = {
                     @JoinColumn(name = "USER_ID")

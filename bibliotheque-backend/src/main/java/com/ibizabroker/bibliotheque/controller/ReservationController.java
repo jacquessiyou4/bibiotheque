@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @Tag(name = "Réservations")
-@CrossOrigin("http://localhost:4200/")
 @RestController
 @RequestMapping("/api/reservations")
 public class ReservationController {

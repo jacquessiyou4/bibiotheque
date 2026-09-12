@@ -20,7 +20,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Tag(name = "Livres", description = "CRUD des livres (admin)")
-@CrossOrigin("http://localhost:4200/")
 @RestController
 @RequestMapping("/admin")
 @Slf4j

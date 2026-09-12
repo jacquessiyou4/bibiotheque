@@ -25,7 +25,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Tag(name = "Utilisateurs", description = "Gestion des utilisateurs (admin)")
-@CrossOrigin("http://localhost:4200/")
 @RestController
 @RequestMapping("/admin")
 @Slf4j

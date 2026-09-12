@@ -64,7 +64,7 @@ describe('BorrowListComponent', () => {
     return b;
   }
 
-  it('should create', () => {
+  it('devrait être créé', () => {
     expect(component).toBeTruthy();
   });
 

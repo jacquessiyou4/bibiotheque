@@ -232,7 +232,7 @@ Pour une bibliothèque réelle avec des centaines de livres et utilisateurs,
 c'est un problème de performance et de sécurité.
 
 **Backend (Spring Data) :**
-
+B
 ```java
 @GetMapping("/books")
 public Page<Books> getAllBooks(

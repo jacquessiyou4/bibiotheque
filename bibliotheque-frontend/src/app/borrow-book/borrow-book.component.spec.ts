@@ -41,7 +41,7 @@ describe('BorrowBookComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should create', () => {
+  it('devrait être créé', () => {
     expect(component).toBeTruthy();
   });
 

@@ -1,27 +1,26 @@
-import { ErrorHandler, Injectable } from '@angular/core';
+import { ErrorHandler, Injectable, Injector } from '@angular/core';
+import { NotificationService } from './notification.service';
 
 /**
  * Gestionnaire d'erreurs global pour l'application.
- * Capture toutes les erreurs non gérées et les journalise proprement.
- * En production, on pourrait intégrer un service de notification (toast)
- * ou un outil de monitoring (Sentry, etc.).
+ * Capture toutes les erreurs non gérées et les affiche via le service de notification.
  */
 @Injectable()
 export class AppErrorHandler implements ErrorHandler {
+  constructor(private injector: Injector) {}
 
   handleError(error: any): void {
-    // Extraire un message lisible
-    const message = error?.message || error?.statusText || String(error);
+    const notification = this.injector.get(NotificationService);
     const status = error?.status;
 
     if (status === 401) {
-      console.error('[Auth] Session expirée ou token invalide');
+      notification.showError('Session expirée. Veuillez vous reconnecter.');
     } else if (status === 403) {
-      console.error('[Auth] Accès interdit');
+      notification.showError('Accès interdit.');
     } else if (status === 0) {
-      console.error('[Réseau] Impossible de joindre le serveur');
+      notification.showError('Impossible de joindre le serveur.');
     } else {
-      console.error('[Erreur]', message);
+      notification.showError('Une erreur est survenue. Réessayez.');
     }
   }
 }

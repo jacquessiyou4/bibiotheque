@@ -1,26 +1,24 @@
 import { Users } from './users';
 
 describe('Users', () => {
-  it('should create an instance', () => {
+  it('devrait créer une instance', () => {
     expect(new Users()).toBeTruthy();
   });
 
-  it('should accept field assignment', () => {
+  it('devrait accepter l\'assignation de champs', () => {
     const user = new Users();
     user.userId = 1;
     user.username = 'john';
     user.name = 'John Doe';
-    user.password = 'secret123';
     user.role = [{ roleName: 'ADHERENT' }];
 
     expect(user.userId).toBe(1);
     expect(user.username).toBe('john');
     expect(user.name).toBe('John Doe');
-    expect(user.password).toBe('secret123');
     expect(user.role).toEqual([{ roleName: 'ADHERENT' }]);
   });
 
-  it('should serialize from JSON (password omitted by @JsonIgnore)', () => {
+  it('devrait sérialiser depuis JSON (password omis par @JsonIgnore)', () => {
     const json = {
       userId: 42,
       username: 'jane',

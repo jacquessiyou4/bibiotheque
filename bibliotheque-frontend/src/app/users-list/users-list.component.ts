@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { Router } from '@angular/router';
 import { Users } from '../_model/users';
 import { UsersService } from '../_service/users.service';
@@ -6,24 +6,18 @@ import { UsersService } from '../_service/users.service';
 @Component({
   selector: 'app-users-list',
   templateUrl: './users-list.component.html',
-  styleUrls: ['./users-list.component.css']
+  styleUrls: ['./users-list.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class UsersListComponent implements OnInit {
 
-  users: Users[];
+  users: Users[] = [];
 
   constructor(private usersService: UsersService,
     private router: Router) { }
 
   ngOnInit(): void {
     this.getUsers();
-    // this.users = [{
-    //   "userId": 1,
-    //   "name": "tarun",
-    //   "username": "tarungowda",
-    //   "role": "STUDENT",
-    //   "password": "sdklfjlakdsf"
-    // }]
   }
 
   private getUsers() {

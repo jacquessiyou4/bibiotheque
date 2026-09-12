@@ -31,19 +31,19 @@ describe('AppComponent', () => {
     }).compileComponents();
   });
 
-  it('should create the app', () => {
+  it('devrait créer l\'application', () => {
     const fixture = TestBed.createComponent(AppComponent);
     const app = fixture.componentInstance;
     expect(app).toBeTruthy();
   });
 
-  it(`should have as title 'Library Management System'`, () => {
+  it('devrait avoir le titre \'Library Management System\'', () => {
     const fixture = TestBed.createComponent(AppComponent);
     const app = fixture.componentInstance;
     expect(app.title).toEqual('Library Management System');
   });
 
-  it('should render the header and the router-outlet', () => {
+  it('devrait afficher le header et le router-outlet', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
@@ -51,7 +51,7 @@ describe('AppComponent', () => {
     expect(compiled.querySelector('router-outlet')).toBeTruthy();
   });
 
-  it('should call themeService.init() on construction', () => {
+  it('devrait appeler themeService.init() à la construction', () => {
     TestBed.createComponent(AppComponent);
     expect(themeServiceSpy.init).toHaveBeenCalled();
   });

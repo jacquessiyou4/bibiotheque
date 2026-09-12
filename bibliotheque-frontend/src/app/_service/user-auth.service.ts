@@ -57,7 +57,6 @@ export class UserAuthService {
         .join(''));
       return JSON.parse(jsonPayload);
     } catch (e) {
-      console.error('Impossible de décoder le JWT', e);
       return {};
     }
   }

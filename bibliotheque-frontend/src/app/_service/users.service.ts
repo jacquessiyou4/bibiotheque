@@ -2,7 +2,7 @@ import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { NgForm } from '@angular/forms';
 import { Observable } from 'rxjs';
-import { Users } from '../_model/users';
+import { CreateUserRequest, Users } from '../_model/users';
 import { UserAuthService } from './user-auth.service';
 import { apiUrl, keycloakClient, keycloakRealm, keycloakUrl } from './api-config';
 
@@ -73,7 +73,7 @@ export class UsersService {
     return this.httpClient.get<Users[]>(`${this.baseURL}`);
   }
 
-  createUser(user: Users): Observable<Object> {
+  createUser(user: CreateUserRequest | Users): Observable<Object> {
     return this.httpClient.post(`${this.baseURL}`, user);
   }
 

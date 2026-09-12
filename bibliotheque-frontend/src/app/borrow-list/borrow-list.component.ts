@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { forkJoin } from 'rxjs';
 import { Borrow } from '../_model/borrow';
 import { Books } from '../_model/books';
 import { Users } from '../_model/users';
@@ -23,7 +24,8 @@ export interface BorrowRow {
 @Component({
   selector: 'app-borrow-list',
   templateUrl: './borrow-list.component.html',
-  styleUrls: ['./borrow-list.component.css']
+  styleUrls: ['./borrow-list.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class BorrowListComponent implements OnInit {
 
@@ -50,12 +52,12 @@ export class BorrowListComponent implements OnInit {
   }
 
   private loadBorrows(): void {
-    this.booksService.getBooksList().subscribe(books => {
-      this.usersService.getUsersList().subscribe(users => {
-        this.borrowService.getBorrowList().subscribe(borrows => {
-          this.allRows = this.buildRows(books || [], users || [], borrows || []);
-        });
-      });
+    forkJoin({
+      books: this.booksService.getBooksList(),
+      users: this.usersService.getUsersList(),
+      borrows: this.borrowService.getBorrowList()
+    }).subscribe(({ books, users, borrows }) => {
+      this.allRows = this.buildRows(books || [], users || [], borrows || []);
     });
   }
 

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { Router } from '@angular/router';
 import { Books } from '../_model/books'
 import { BooksService } from '../_service/books.service';
@@ -6,11 +6,12 @@ import { BooksService } from '../_service/books.service';
 @Component({
   selector: 'app-books-list',
   templateUrl: './books-list.component.html',
-  styleUrls: ['./books-list.component.css']
+  styleUrls: ['./books-list.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class BooksListComponent implements OnInit {
 
-  books: Books[];
+  books: Books[] = [];
 
   constructor(private booksService: BooksService,
     private router: Router) { }

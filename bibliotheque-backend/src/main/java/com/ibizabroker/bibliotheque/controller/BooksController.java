@@ -3,6 +3,7 @@ package com.ibizabroker.bibliotheque.controller;
 import com.ibizabroker.bibliotheque.dao.BooksRepository;
 import com.ibizabroker.bibliotheque.entity.Books;
 import com.ibizabroker.bibliotheque.exceptions.NotFoundException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,6 +23,7 @@ import java.util.Map;
 @CrossOrigin("http://localhost:4200/")
 @RestController
 @RequestMapping("/admin")
+@Slf4j
 public class BooksController {
 
     @Autowired
@@ -34,13 +36,16 @@ public class BooksController {
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "bookId") String sortBy) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy));
-        return booksRepository.findAll(pageable);
+        Page<Books> booksPage = booksRepository.findAll(pageable);
+        log.info("Requête GET /admin/books — {} livres en base", booksRepository.count());
+        return booksPage;
     }
 
     @Operation(summary = "Obtenir un livre par son identifiant")
     @PreAuthorize("hasRole('Admin')")
     @GetMapping("/books/{id}")
     public ResponseEntity<Books> getBookById(@PathVariable Integer id) {
+        log.info("Requête GET /admin/books/{}", id);
         Books book = booksRepository.findById(id).orElseThrow(() -> new NotFoundException("Book with id "+ id +" does not exist."));
         return ResponseEntity.ok(book);
     }
@@ -49,6 +54,7 @@ public class BooksController {
     @PreAuthorize("hasRole('Admin')")
     @PostMapping("/books")
     public Books createBook(@Valid @RequestBody Books book) {
+        log.info("Requête POST /admin/books — création du livre '{}'", book.getBookName());
         return booksRepository.save(book);
     }
 
@@ -56,6 +62,7 @@ public class BooksController {
     @PreAuthorize("hasRole('Admin')")
     @PutMapping("/books/{id}")
     public ResponseEntity<Books> updateBook(@PathVariable Integer id, @Valid @RequestBody Books bookDetails) {
+        log.info("Requête PUT /admin/books/{}", id);
         Books book = booksRepository.findById(id).orElseThrow(() -> new NotFoundException("Book with id "+ id +" does not exist."));
 
         book.setBookName(bookDetails.getBookName());
@@ -71,6 +78,7 @@ public class BooksController {
     @PreAuthorize("hasRole('Admin')")
     @DeleteMapping("/books/{id}")
     public ResponseEntity<Map<String, Boolean>> deleteBook(@PathVariable Integer id) {
+        log.info("Requête DELETE /admin/books/{}", id);
         Books book = booksRepository.findById(id).orElseThrow(() -> new NotFoundException("Book with id "+ id +" does not exist."));
 
         booksRepository.delete(book);

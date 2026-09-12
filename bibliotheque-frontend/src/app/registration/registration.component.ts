@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { Users } from '../_model/users';
+import { CreateUserRequest } from '../_model/users';
 import { UsersService } from '../_service/users.service';
 
 @Component({
@@ -10,7 +10,12 @@ import { UsersService } from '../_service/users.service';
 })
 export class RegistrationComponent implements OnInit {
 
-  user: Users = new Users();
+  user: CreateUserRequest = {
+    username: '',
+    name: '',
+    password: '',
+    roles: []
+  };
   showPassword = false;
   selectedRole: 'Admin' | 'User' = 'User';
 
@@ -35,7 +40,7 @@ export class RegistrationComponent implements OnInit {
   }
 
   onSubmit() {
-    this.user.role = [{ roleName: this.selectedRole }];
+    this.user.roles = [this.selectedRole];
     this.saveUser();
   }
 

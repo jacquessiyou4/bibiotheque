@@ -36,11 +36,11 @@ describe('RegistrationComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should create', () => {
+  it('devrait être créé', () => {
     expect(component).toBeTruthy();
   });
 
-  it('le rôle sélectionné par défaut est User (ADHERENT)', () => {
+  it('le rôle sélectionné par défaut est User', () => {
     expect(component.selectedRole).toBe('User');
   });
 
@@ -52,7 +52,7 @@ describe('RegistrationComponent', () => {
 
     component.onSubmit();
 
-    expect(component.user.role).toEqual([{ roleName: 'Admin' }]);
+    expect(component.user.roles).toEqual(['Admin']);
     expect(usersServiceSpy.createUser).toHaveBeenCalledWith(component.user);
     expect(router.navigate).toHaveBeenCalledWith(['/users']);
   });

@@ -1,7 +1,7 @@
 import { Borrow } from './borrow';
 
 describe('Borrow', () => {
-  it('should create an instance', () => {
+  it('devrait créer une instance', () => {
     expect(new Borrow()).toBeTruthy();
   });
 

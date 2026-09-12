@@ -138,21 +138,23 @@ services:
   #      les exposer directement (supprimer les lignes `ports:`)
   #   3. Rediriger le trafic via Caddy sur les ports 80/443
   #
-  # caddy:
-  #   image: caddy:2-alpine
-  #   container_name: bibliotheque-caddy
-  #   ports:
-  #     - "80:80"
-  #     - "443:443"
-  #   volumes:
-  #     - ./Caddyfile:/etc/caddy/Caddyfile:ro
-  #     - caddy_data:/data
-  #     - caddy_config:/config
-  #   depends_on:
-  #     - backend
-  #     - frontend
-  #     - keycloak
+  caddy:
+    image: caddy:2-alpine
+    container_name: bibliotheque-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+      - frontend
+      - keycloak
 
 volumes:
   db_data:
   keycloak_db_data:
+  caddy_data:
+  caddy_config:

@@ -13,7 +13,7 @@ import javax.validation.constraints.Size;
 public class Books {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     Integer bookId;
 
     @NotBlank(message = "Le nom du livre est obligatoire")

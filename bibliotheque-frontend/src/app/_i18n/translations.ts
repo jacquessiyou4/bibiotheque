@@ -126,6 +126,10 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'returnBook.return': 'Return',
 
     'forbidden.message': 'You do not have access to this page.',
+
+    'validation.name_required': 'Name is required (min 2 characters)',
+    'validation.username_required': 'Username is required (min 3 characters)',
+    'validation.password_minlength': 'Password must be at least 6 characters',
   },
   fr: {
     'nav.bookList': 'Livres',
@@ -252,5 +256,9 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'returnBook.return': 'Rendre',
 
     'forbidden.message': "Vous n'avez pas accès à cette page.",
+
+    'validation.name_required': 'Le nom est obligatoire (min. 2 caractères)',
+    'validation.username_required': "Le nom d'utilisateur est obligatoire (min. 3 caractères)",
+    'validation.password_minlength': 'Le mot de passe doit contenir au moins 6 caractères',
   },
 };

@@ -31,9 +31,11 @@ export class BooksListComponent implements OnInit {
   }
 
   deleteBook(bookId: number) {
-    this.booksService.deleteBook(bookId).subscribe( data=> {
-      this.getBooks();
-    });
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce livre ?')) {
+      this.booksService.deleteBook(bookId).subscribe( data=> {
+        this.getBooks();
+      });
+    }
   }
 
   bookDetails(bookId: number) {

@@ -4,7 +4,6 @@ import com.ibizabroker.bibliotheque.dao.BooksRepository;
 import com.ibizabroker.bibliotheque.entity.Books;
 import com.ibizabroker.bibliotheque.exceptions.NotFoundException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,8 +24,11 @@ import java.util.Map;
 @Slf4j
 public class BooksController {
 
-    @Autowired
-    private BooksRepository booksRepository;
+    private final BooksRepository booksRepository;
+
+    public BooksController(BooksRepository booksRepository) {
+        this.booksRepository = booksRepository;
+    }
 
     @Operation(summary = "Lister les livres (pagination)")
     @GetMapping("/books")

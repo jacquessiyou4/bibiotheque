@@ -13,7 +13,6 @@ import com.ibizabroker.bibliotheque.exceptions.BadRequestException;
 import com.ibizabroker.bibliotheque.exceptions.ConflictException;
 import com.ibizabroker.bibliotheque.exceptions.ForbiddenException;
 import com.ibizabroker.bibliotheque.exceptions.NotFoundException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -30,14 +29,15 @@ public class ReservationService {
 
     private static final long MAX_RESERVATIONS_ACTIVES = 3;
 
-    @Autowired
-    private ReservationRepository reservationRepository;
+    private final ReservationRepository reservationRepository;
+    private final BooksRepository booksRepository;
+    private final UsersRepository usersRepository;
 
-    @Autowired
-    private BooksRepository booksRepository;
-
-    @Autowired
-    private UsersRepository usersRepository;
+    public ReservationService(ReservationRepository reservationRepository, BooksRepository booksRepository, UsersRepository usersRepository) {
+        this.reservationRepository = reservationRepository;
+        this.booksRepository = booksRepository;
+        this.usersRepository = usersRepository;
+    }
 
     /**
      * Crée une réservation. L'identité de l'adhérent vient du token

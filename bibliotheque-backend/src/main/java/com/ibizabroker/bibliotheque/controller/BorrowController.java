@@ -7,7 +7,6 @@ import com.ibizabroker.bibliotheque.entity.Books;
 import com.ibizabroker.bibliotheque.entity.Borrow;
 import com.ibizabroker.bibliotheque.entity.Users;
 import com.ibizabroker.bibliotheque.exceptions.NotFoundException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,14 +18,15 @@ import java.util.List;
 @RequestMapping("/borrow")
 public class BorrowController {
 
-    @Autowired
-    private BorrowRepository borrowRepository;
+    private final BorrowRepository borrowRepository;
+    private final UsersRepository usersRepository;
+    private final BooksRepository booksRepository;
 
-    @Autowired
-    private UsersRepository usersRepository;
-
-    @Autowired
-    private BooksRepository booksRepository;
+    public BorrowController(BorrowRepository borrowRepository, UsersRepository usersRepository, BooksRepository booksRepository) {
+        this.borrowRepository = borrowRepository;
+        this.usersRepository = usersRepository;
+        this.booksRepository = booksRepository;
+    }
 
     @PreAuthorize("hasAnyRole('User', 'Admin', 'ADHERENT', 'BIBLIOTHECAIRE')")
     @PostMapping

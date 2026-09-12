@@ -3,7 +3,6 @@ package com.ibizabroker.bibliotheque.controller;
 import com.ibizabroker.bibliotheque.dao.UsersRepository;
 import com.ibizabroker.bibliotheque.entity.Users;
 import com.ibizabroker.bibliotheque.exceptions.NotFoundException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,8 +17,11 @@ import java.util.Map;
 @RestController
 public class MeController {
 
-    @Autowired
-    private UsersRepository usersRepository;
+    private final UsersRepository usersRepository;
+
+    public MeController(UsersRepository usersRepository) {
+        this.usersRepository = usersRepository;
+    }
 
     @Operation(summary = "Obtenir l'utilisateur local associé au jeton Keycloak")
     @GetMapping("/me")

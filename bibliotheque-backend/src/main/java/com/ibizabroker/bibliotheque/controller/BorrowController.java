@@ -8,6 +8,7 @@ import com.ibizabroker.bibliotheque.entity.Borrow;
 import com.ibizabroker.bibliotheque.entity.Users;
 import com.ibizabroker.bibliotheque.exceptions.NotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Calendar;
@@ -27,6 +28,7 @@ public class BorrowController {
     @Autowired
     private BooksRepository booksRepository;
 
+    @PreAuthorize("hasAnyRole('User', 'Admin', 'ADHERENT', 'BIBLIOTHECAIRE')")
     @PostMapping
     public String borrowBook(@RequestBody Borrow borrow) {
         Users user = usersRepository.findById(borrow.getUserId())
@@ -53,11 +55,13 @@ public class BorrowController {
         return user.getName() + " has borrowed one copy of \"" + book.getBookName() + "\"!";
     }
 
+    @PreAuthorize("hasAnyRole('User', 'Admin', 'ADHERENT', 'BIBLIOTHECAIRE')")
     @GetMapping
     public List<Borrow> getAllBorrow() {
         return borrowRepository.findAll();
     }
 
+    @PreAuthorize("hasAnyRole('User', 'Admin', 'ADHERENT', 'BIBLIOTHECAIRE')")
     @PutMapping
     public Borrow returnBook(@RequestBody Borrow borrow) {
         Borrow borrowBook = borrowRepository.findById(borrow.getBorrowId())
@@ -73,11 +77,13 @@ public class BorrowController {
         return borrowRepository.save(borrowBook);
     }
 
+    @PreAuthorize("hasAnyRole('User', 'Admin', 'ADHERENT', 'BIBLIOTHECAIRE')")
     @GetMapping("user/{id}")
     public List<Borrow> booksBorrowedByUser(@PathVariable Integer id) {
         return borrowRepository.findByUserId(id);
     }
 
+    @PreAuthorize("hasAnyRole('User', 'Admin', 'ADHERENT', 'BIBLIOTHECAIRE')")
     @GetMapping("book/{id}")
     public List<Borrow> bookBorrowHistory(@PathVariable Integer id) {
         return borrowRepository.findByBookId(id);

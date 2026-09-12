@@ -1,5 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { Books } from '../_model/books';
 import { Borrow } from '../_model/borrow';
 import { Users } from '../_model/users';
@@ -12,7 +14,9 @@ import { UsersService } from '../_service/users.service';
   templateUrl: './book-details.component.html',
   styleUrls: ['./book-details.component.css']
 })
-export class BookDetailsComponent implements OnInit {
+export class BookDetailsComponent implements OnInit, OnDestroy {
+
+  private destroy$ = new Subject<void>();
 
   id: number;
   book: Books;
@@ -28,7 +32,7 @@ export class BookDetailsComponent implements OnInit {
   ngOnInit(): void {
     this.id = this.route.snapshot.params['bookId'];
     this.book = new Books();
-    this.bookService.getBookById(this.id).subscribe( data => {
+    this.bookService.getBookById(this.id).pipe(takeUntil(this.destroy$)).subscribe( data => {
       this.book = data;
     })
 
@@ -36,15 +40,20 @@ export class BookDetailsComponent implements OnInit {
     
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   private getBorrowHistory(bookId: number) {
-    this.borrowService.getBookBorrowHistory(bookId).subscribe(data => {
+    this.borrowService.getBookBorrowHistory(bookId).pipe(takeUntil(this.destroy$)).subscribe(data => {
       this.borrow = data;
     });
   }
 
   public getUserData(userId: number):string {
     this.user = new Users();
-    this.userService.getUserById(userId).subscribe( data => {
+    this.userService.getUserById(userId).pipe(takeUntil(this.destroy$)).subscribe( data => {
       this.user = data;
     })
     return this.user.name;

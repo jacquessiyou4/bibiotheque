@@ -1,5 +1,6 @@
-import { Component, OnInit } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { Books } from '../_model/books';
 import { Borrow } from '../_model/borrow';
 import { BooksService } from '../_service/books.service';
@@ -11,7 +12,9 @@ import { UserAuthService } from '../_service/user-auth.service';
   templateUrl: './return-book.component.html',
   styleUrls: ['./return-book.component.css']
 })
-export class ReturnBookComponent implements OnInit {
+export class ReturnBookComponent implements OnInit, OnDestroy {
+
+  private destroy$ = new Subject<void>();
 
   books: Books[];
   borrow: Borrow[];
@@ -29,15 +32,20 @@ export class ReturnBookComponent implements OnInit {
     this.getBooksByUser();
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   private getBooks() {
-    this.booksService.getBooksList().subscribe(data =>{
+    this.booksService.getBooksList().pipe(takeUntil(this.destroy$)).subscribe(data =>{
       this.books = data;
     });
   }
 
   
   private getBooksByUser() {
-    this.borrowService.getBooksBorrowedByUser(this.userId).subscribe(data => {
+    this.borrowService.getBooksBorrowedByUser(this.userId).pipe(takeUntil(this.destroy$)).subscribe(data => {
       this.borrow = data;
     })
   }
@@ -45,7 +53,7 @@ export class ReturnBookComponent implements OnInit {
   brw: Borrow = new Borrow();
   public returnBook(borrowId: number) {
     this.brw.borrowId = borrowId;
-    this.borrowService.returnBook(this.brw).subscribe();
+    this.borrowService.returnBook(this.brw).pipe(takeUntil(this.destroy$)).subscribe();
   }
 
 }

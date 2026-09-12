@@ -1,4 +1,6 @@
-import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { forkJoin } from 'rxjs';
 import { Borrow } from '../_model/borrow';
 import { Books } from '../_model/books';
@@ -28,7 +30,9 @@ export interface BorrowRow {
   styleUrls: ['./borrow-list.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class BorrowListComponent implements OnInit {
+export class BorrowListComponent implements OnInit, OnDestroy {
+
+  private destroy$ = new Subject<void>();
 
   readonly statuts: BorrowStatut[] = ['Emprunté', 'Rendu', 'Disponible'];
 
@@ -46,6 +50,11 @@ export class BorrowListComponent implements OnInit {
     this.loadBorrows();
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   get rows(): BorrowRow[] {
     if (!this.filtreStatut) {
       return this.allRows;
@@ -58,7 +67,7 @@ export class BorrowListComponent implements OnInit {
       books: this.booksService.getBooksList(),
       users: this.usersService.getUsersList(),
       borrows: this.borrowService.getBorrowList()
-    }).subscribe({
+    }).pipe(takeUntil(this.destroy$)).subscribe({
       next: ({ books, users, borrows }) => {
         this.allRows = this.buildRows(books || [], users || [], borrows || []);
       },

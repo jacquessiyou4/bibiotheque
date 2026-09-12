@@ -1,5 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { CreateUserRequest } from '../_model/users';
 import { UsersService } from '../_service/users.service';
 
@@ -8,7 +10,9 @@ import { UsersService } from '../_service/users.service';
   templateUrl: './registration.component.html',
   styleUrls: ['./registration.component.css']
 })
-export class RegistrationComponent implements OnInit {
+export class RegistrationComponent implements OnInit, OnDestroy {
+
+  private destroy$ = new Subject<void>();
 
   user: CreateUserRequest = {
     username: '',
@@ -25,12 +29,17 @@ export class RegistrationComponent implements OnInit {
   ngOnInit(): void {
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   togglePasswordVisibility() {
     this.showPassword = !this.showPassword;
   }
 
   saveUser() {
-    this.usersService.createUser(this.user).subscribe(data => {
+    this.usersService.createUser(this.user).pipe(takeUntil(this.destroy$)).subscribe(data => {
       this.goToUsersList();
     });
   }

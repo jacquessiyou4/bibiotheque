@@ -1,5 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { Books } from '../_model/books';
 import { Users } from '../_model/users';
 import { Reservation, ReservationRequest, StatutReservation } from '../_model/reservation';
@@ -19,7 +21,9 @@ const STATUTS: StatutReservation[] = ['EN_ATTENTE', 'DISPONIBLE', 'ANNULEE', 'EX
   templateUrl: './reservations.component.html',
   styleUrls: ['./reservations.component.css']
 })
-export class ReservationsComponent implements OnInit {
+export class ReservationsComponent implements OnInit, OnDestroy {
+
+  private destroy$ = new Subject<void>();
 
   readonly statuts = STATUTS;
 
@@ -78,10 +82,15 @@ export class ReservationsComponent implements OnInit {
     }
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   chargerReservations(): void {
     this.etat = 'chargement';
     const statut = this.filtreStatut || undefined;
-    this.reservationService.getReservations(statut as StatutReservation | undefined).subscribe({
+    this.reservationService.getReservations(statut as StatutReservation | undefined).pipe(takeUntil(this.destroy$)).subscribe({
       next: (data) => {
         this.reservations = data;
         this.etat = data.length === 0 ? 'vide' : 'donnees';
@@ -93,7 +102,7 @@ export class ReservationsComponent implements OnInit {
   }
 
   private chargerReferentiels(): void {
-    this.booksService.getBooksList().subscribe({
+    this.booksService.getBooksList().pipe(takeUntil(this.destroy$)).subscribe({
       // Le dropdown liste tous les livres, disponibles inclus : c'est ce qui
       // permet de déclencher volontairement le 409 RG-01 (voir passage devant
       // le formateur, séance 3).
@@ -108,7 +117,7 @@ export class ReservationsComponent implements OnInit {
       return;
     }
 
-    this.usersService.getUsersList().subscribe({
+    this.usersService.getUsersList().pipe(takeUntil(this.destroy$)).subscribe({
       next: (users) => this.adherents = (users || []).filter(
         (u: any) => u.role && u.role.some((r: any) => r.roleName === 'User')),
       error: () => this.adherents = []
@@ -127,7 +136,7 @@ export class ReservationsComponent implements OnInit {
     this.creationEnCours = true;
     this.erreurFormulaire = null;
 
-    this.reservationService.createReservation(request).subscribe({
+    this.reservationService.createReservation(request).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.creationEnCours = false;
         this.resetFormulaire++;
@@ -143,7 +152,7 @@ export class ReservationsComponent implements OnInit {
   onAnnuler(id: number): void {
     this.annulationEnCoursId = id;
     this.erreurAnnulation = null;
-    this.reservationService.annulerReservation(id).subscribe({
+    this.reservationService.annulerReservation(id).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.annulationEnCoursId = null;
         this.chargerReservations();
@@ -165,7 +174,7 @@ export class ReservationsComponent implements OnInit {
 
     this.suppressionEnCoursId = id;
     this.erreurSuppression = null;
-    this.reservationService.deleteReservation(id).subscribe({
+    this.reservationService.deleteReservation(id).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.suppressionEnCoursId = null;
         this.chargerReservations();
@@ -180,7 +189,7 @@ export class ReservationsComponent implements OnInit {
 
   chargerExpirees(): void {
     this.etatExpirees = 'chargement';
-    this.reservationService.getExpiredReservations().subscribe({
+    this.reservationService.getExpiredReservations().pipe(takeUntil(this.destroy$)).subscribe({
       next: (data) => {
         this.reservationsExpirees = data;
         this.etatExpirees = data.length === 0 ? 'vide' : 'donnees';

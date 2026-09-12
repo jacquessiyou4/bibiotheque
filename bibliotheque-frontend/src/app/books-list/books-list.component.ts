@@ -1,5 +1,7 @@
-import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import { Router } from '@angular/router';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { Books } from '../_model/books'
 import { BooksService } from '../_service/books.service';
 import { NotificationService } from '../_service/notification.service';
@@ -10,8 +12,9 @@ import { NotificationService } from '../_service/notification.service';
   styleUrls: ['./books-list.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class BooksListComponent implements OnInit {
+export class BooksListComponent implements OnInit, OnDestroy {
 
+  private destroy$ = new Subject<void>();
   books: Books[] = [];
 
   constructor(
@@ -24,8 +27,13 @@ export class BooksListComponent implements OnInit {
     this.getBooks();
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   private getBooks() {
-    this.booksService.getBooksList().subscribe({
+    this.booksService.getBooksList().pipe(takeUntil(this.destroy$)).subscribe({
       next: (data) => this.books = data,
       error: () => this.notificationService.showError('Erreur de chargement des livres')
     });
@@ -37,7 +45,7 @@ export class BooksListComponent implements OnInit {
 
   deleteBook(bookId: number) {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer ce livre ?')) {
-      this.booksService.deleteBook(bookId).subscribe({
+      this.booksService.deleteBook(bookId).pipe(takeUntil(this.destroy$)).subscribe({
         next: () => this.getBooks(),
         error: () => this.notificationService.showError('Erreur de suppression du livre')
       });

@@ -1,5 +1,7 @@
-import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import { Router } from '@angular/router';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { Users } from '../_model/users';
 import { UsersService } from '../_service/users.service';
 import { NotificationService } from '../_service/notification.service';
@@ -10,8 +12,9 @@ import { NotificationService } from '../_service/notification.service';
   styleUrls: ['./users-list.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class UsersListComponent implements OnInit {
+export class UsersListComponent implements OnInit, OnDestroy {
 
+  private destroy$ = new Subject<void>();
   users: Users[] = [];
 
   constructor(
@@ -24,8 +27,13 @@ export class UsersListComponent implements OnInit {
     this.getUsers();
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   private getUsers() {
-    this.usersService.getUsersList().subscribe({
+    this.usersService.getUsersList().pipe(takeUntil(this.destroy$)).subscribe({
       next: (data) => this.users = data,
       error: () => this.notificationService.showError('Erreur de chargement des utilisateurs')
     });

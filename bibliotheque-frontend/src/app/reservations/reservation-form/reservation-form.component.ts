@@ -1,4 +1,6 @@
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges } from '@angular/core';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { Books } from '../../_model/books';
 import { Users } from '../../_model/users';
 import { ReservationRequest } from '../../_model/reservation';
@@ -12,7 +14,9 @@ const QUOTA_RESERVATIONS_ACTIVES = 3;
   templateUrl: './reservation-form.component.html',
   styleUrls: ['./reservation-form.component.css']
 })
-export class ReservationFormComponent implements OnChanges {
+export class ReservationFormComponent implements OnChanges, OnDestroy {
+
+  private destroy$ = new Subject<void>();
 
   @Input() livres: Books[] = [];
   @Input() adherents: Users[] = [];
@@ -32,6 +36,11 @@ export class ReservationFormComponent implements OnChanges {
 
   constructor(private reservationService: ReservationService) { }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['resetTrigger'] && !changes['resetTrigger'].firstChange) {
       this.livreId = null;
@@ -45,7 +54,7 @@ export class ReservationFormComponent implements OnChanges {
     if (!this.adherentId) { return; }
 
     this.loadingCount = true;
-    this.reservationService.getReservationsByAdherent(this.adherentId).subscribe({
+    this.reservationService.getReservationsByAdherent(this.adherentId).pipe(takeUntil(this.destroy$)).subscribe({
       next: (reservations) => {
         this.activeCount = reservations.filter(r => STATUTS_ACTIFS.includes(r.statut)).length;
         this.loadingCount = false;

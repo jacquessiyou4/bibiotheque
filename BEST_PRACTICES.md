@@ -408,7 +408,7 @@ public class BooksController {
 
 ---
 
-### 14. Mettre en place un pipeline CI/CD
+### ~~14. Mettre en place un pipeline CI/CD~~
 
 Aucun fichier `.github/workflows` n'existe. Un pipeline minimal :
 
@@ -1038,7 +1038,7 @@ autres utilisateurs.
 
 ## 🟢 Priorité basse — Nice-to-have (nouvelles recommandations)
 
-### 41. Ajouter des tests unitaires pour les contrôleurs
+### ~~41. Ajouter des tests unitaires pour les contrôleurs~~
 
 **Fichiers :** `BooksController.java`, `BorrowController.java`,
 `AdminController.java`, `MeController.java`
@@ -1114,8 +1114,8 @@ de tables sont aussi incohérents (`Books` vs `reservation`).
 | 🟡 | Remplacer `ddl-auto` par Flyway | Moyen | Fiabilité |
 | 🟢 | ~~Pipeline CI/CD~~ | Moyen | Fiabilité |
 | 🟢 | ~~Swagger annotations~~ | Faible | Documentation |
-| 🟢 | Tests unitaires contrôleurs | Moyen | Qualité |
-| 🟢 | Couverture de code CI | Moyen | Qualité |
+| 🟢 | ~~Tests unitaires contrôleurs~~ | Moyen | Qualité |
+| 🟢 | ~~Couverture de code CI~~ | Moyen | Qualité |
 | 🟢 | ~~OnPush change detection~~ | Faible | Performance |
 
 ---

@@ -2,6 +2,7 @@ import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { Router } from '@angular/router';
 import { Books } from '../_model/books'
 import { BooksService } from '../_service/books.service';
+import { NotificationService } from '../_service/notification.service';
 
 @Component({
   selector: 'app-books-list',
@@ -13,16 +14,20 @@ export class BooksListComponent implements OnInit {
 
   books: Books[] = [];
 
-  constructor(private booksService: BooksService,
-    private router: Router) { }
+  constructor(
+    private booksService: BooksService,
+    private router: Router,
+    private notificationService: NotificationService
+  ) { }
 
   ngOnInit(): void {
     this.getBooks();
   }
 
   private getBooks() {
-    this.booksService.getBooksList().subscribe(data =>{
-      this.books = data;
+    this.booksService.getBooksList().subscribe({
+      next: (data) => this.books = data,
+      error: () => this.notificationService.showError('Erreur de chargement des livres')
     });
   }
 
@@ -32,8 +37,9 @@ export class BooksListComponent implements OnInit {
 
   deleteBook(bookId: number) {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer ce livre ?')) {
-      this.booksService.deleteBook(bookId).subscribe( data=> {
-        this.getBooks();
+      this.booksService.deleteBook(bookId).subscribe({
+        next: () => this.getBooks(),
+        error: () => this.notificationService.showError('Erreur de suppression du livre')
       });
     }
   }

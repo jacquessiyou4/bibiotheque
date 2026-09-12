@@ -6,6 +6,7 @@ import { Users } from '../_model/users';
 import { BorrowService } from '../_service/borrow.service';
 import { BooksService } from '../_service/books.service';
 import { UsersService } from '../_service/users.service';
+import { NotificationService } from '../_service/notification.service';
 
 export type BorrowStatut = 'Emprunté' | 'Rendu' | 'Disponible';
 
@@ -37,7 +38,8 @@ export class BorrowListComponent implements OnInit {
   constructor(
     private borrowService: BorrowService,
     private booksService: BooksService,
-    private usersService: UsersService
+    private usersService: UsersService,
+    private notificationService: NotificationService
   ) { }
 
   ngOnInit(): void {
@@ -56,8 +58,11 @@ export class BorrowListComponent implements OnInit {
       books: this.booksService.getBooksList(),
       users: this.usersService.getUsersList(),
       borrows: this.borrowService.getBorrowList()
-    }).subscribe(({ books, users, borrows }) => {
-      this.allRows = this.buildRows(books || [], users || [], borrows || []);
+    }).subscribe({
+      next: ({ books, users, borrows }) => {
+        this.allRows = this.buildRows(books || [], users || [], borrows || []);
+      },
+      error: () => this.notificationService.showError('Erreur de chargement des emprunts')
     });
   }
 

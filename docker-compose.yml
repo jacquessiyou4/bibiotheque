@@ -2,12 +2,18 @@ services:
   db:
     image: postgres:16-alpine
     container_name: bibliotheque-db
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-bibliotheque}
       POSTGRES_USER: ${POSTGRES_USER:-bibliotheque}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bibliotheque}
     ports:
-      - "5435:5432"
+      - "${POSTGRES_PORT:-5435}:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
@@ -26,6 +32,12 @@ services:
       context: .
       dockerfile: bibliotheque-backend/Dockerfile
     container_name: bibliotheque-backend
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
     environment:
       # Ces variables surchargent application.properties (qu'on ne modifie
       # pas) grâce au "relaxed binding" de Spring Boot : chaque propriété
@@ -41,13 +53,20 @@ services:
       # pour le NAVIGATEUR portent l'issuer local (http://localhost:8081/…) :
       # l'issuer interne ET l'issuer local sont donc acceptés.
       APP_KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/bibliotheque/protocol/openid-connect/certs
-      APP_KEYCLOAK_ISSUER_LOCAL: http://localhost:8081/realms/bibliotheque
+      APP_KEYCLOAK_ISSUER_LOCAL: http://localhost:${KEYCLOAK_PORT:-8081}/realms/bibliotheque
       APP_KEYCLOAK_ISSUER_INTERNAL: http://keycloak:8080/realms/bibliotheque
+      JWT_SECRET: ${JWT_SECRET:-learn_programming_yourself}
     ports:
-      - "8080:8080"
+      - "${BACKEND_PORT:-8080}:8080"
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # --- Service frontend séparé (nginx) --------------------------------------
   # Le frontend Angular est servi par nginx sur le port 4200.
@@ -58,11 +77,17 @@ services:
     build:
       context: ./bibliotheque-frontend
     container_name: bibliotheque-frontend
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
     environment:
-      API_URL: http://localhost:8080
-      KEYCLOAK_URL: http://localhost:8081
+      API_URL: http://localhost:${BACKEND_PORT:-8080}
+      KEYCLOAK_URL: http://localhost:${KEYCLOAK_PORT:-8081}
     ports:
-      - "4200:80"
+      - "${FRONTEND_PORT:-4200}:80"
     depends_on:
       - backend
     healthcheck:
@@ -74,6 +99,12 @@ services:
   keycloak-db:
     image: postgres:16-alpine
     container_name: bibliotheque-keycloak-db
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
     environment:
       POSTGRES_DB: ${KEYCLOAK_DB_NAME:-keycloak}
       POSTGRES_USER: ${KEYCLOAK_DB_USER:-keycloak}
@@ -91,6 +122,12 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:24.0.5
     container_name: bibliotheque-keycloak
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
     # start-dev : mode développement (H2 remplacé par la base ci-dessous,
     # HTTPS désactivé, logs verbeux). --import-realm charge le realm fourni.
     command: ["start-dev", "--import-realm"]
@@ -133,7 +170,7 @@ services:
   # --- Reverse proxy HTTPS (optionnel) --------------------------------------
   # Caddy termine le TLS automatiquement (certificats Let's Encrypt
   # en prod, certificats auto-signés en dev local). Pour activer :
-  #   1. Décommenter le service ci-dessous
+  #   1. Utiliser le profile https : docker compose --profile https up
   #   2. Modifier les ports des services backend/frontend pour ne plus
   #      les exposer directement (supprimer les lignes `ports:`)
   #   3. Rediriger le trafic via Caddy sur les ports 80/443
@@ -141,6 +178,8 @@ services:
   caddy:
     image: caddy:2-alpine
     container_name: bibliotheque-caddy
+    restart: unless-stopped
+    profiles: ["https"]
     ports:
       - "80:80"
       - "443:443"

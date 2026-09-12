@@ -130,6 +130,29 @@ services:
       timeout: 5s
       retries: 30
       start_period: 45s
+  # --- Reverse proxy HTTPS (optionnel) --------------------------------------
+  # Caddy termine le TLS automatiquement (certificats Let's Encrypt
+  # en prod, certificats auto-signés en dev local). Pour activer :
+  #   1. Décommenter le service ci-dessous
+  #   2. Modifier les ports des services backend/frontend pour ne plus
+  #      les exposer directement (supprimer les lignes `ports:`)
+  #   3. Rediriger le trafic via Caddy sur les ports 80/443
+  #
+  # caddy:
+  #   image: caddy:2-alpine
+  #   container_name: bibliotheque-caddy
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./Caddyfile:/etc/caddy/Caddyfile:ro
+  #     - caddy_data:/data
+  #     - caddy_config:/config
+  #   depends_on:
+  #     - backend
+  #     - frontend
+  #     - keycloak
+
 volumes:
   db_data:
   keycloak_db_data:

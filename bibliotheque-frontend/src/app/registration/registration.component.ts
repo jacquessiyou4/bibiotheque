@@ -26,10 +26,8 @@ export class RegistrationComponent implements OnInit {
 
   saveUser() {
     this.usersService.createUser(this.user).subscribe(data => {
-      console.log(data);
       this.goToUsersList();
-    },
-    error => console.log(error));
+    });
   }
 
   goToUsersList() {

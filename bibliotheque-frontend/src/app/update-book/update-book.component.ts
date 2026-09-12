@@ -27,8 +27,7 @@ export class UpdateBookComponent implements OnInit {
   onSubmit() {
     this.booksService.updateBook(this.bookId, this.book).subscribe( data =>{
         this.goToBooksList();
-    },
-    error => console.log(error));
+    });
   }
 
   goToBooksList() {

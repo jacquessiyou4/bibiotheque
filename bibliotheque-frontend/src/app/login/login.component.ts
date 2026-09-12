@@ -46,14 +46,11 @@ export class LoginComponent implements OnInit {
             this.navigateAfterLogin(roles);
           },
           () => {
-            console.warn('Compte Keycloak sans utilisateur local : les emprunts ne fonctionneront pas.');
             this.navigateAfterLogin(roles);
           }
         );
       },
-      (error) => {
-        console.log(error);
-      }
+      () => {}
     );
   }
 

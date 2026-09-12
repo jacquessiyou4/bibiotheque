@@ -33,8 +33,7 @@ export class UpdateUserComponent implements OnInit {
     this.user.role = [{ roleName: this.selectedRole }];
     this.usersService.updateUser(this.userId, this.user).subscribe( data =>{
         this.goToUsersList();
-    },
-    error => console.log(error));
+    });
   }
 
   goToUsersList() {

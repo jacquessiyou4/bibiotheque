@@ -7,10 +7,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Tag(name = "Utilisateurs", description = "Gestion des utilisateurs (admin)")
 @CrossOrigin("http://localhost:4200/")
 @RestController
 @RequestMapping("/admin")
@@ -22,6 +25,7 @@ public class AdminController {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Operation(summary = "Créer un nouvel utilisateur")
     @PostMapping("/users")
 //    @PreAuthorize("hasRole('Admin')")
     public Users addUserByAdmin(@RequestBody Users user) {
@@ -38,12 +42,14 @@ public class AdminController {
         return user;
     }
 
+    @Operation(summary = "Lister tous les utilisateurs")
     @GetMapping("/users")
     @PreAuthorize("hasRole('Admin')")
     public List<Users> getAllUsers() {
         return usersRepository.findAll();
     }
 
+    @Operation(summary = "Obtenir un utilisateur par son identifiant")
     @PreAuthorize("hasRole('Admin')")
     @GetMapping("/users/{id}")
     public ResponseEntity<Users> getUserById(@PathVariable Integer id) {
@@ -51,6 +57,7 @@ public class AdminController {
         return ResponseEntity.ok(user);
     }
 
+    @Operation(summary = "Modifier un utilisateur existant")
     @PreAuthorize("hasRole('Admin')")
     @PutMapping("/users/{id}")
     public ResponseEntity<Users> updateUser(@PathVariable Integer id, @RequestBody Users userDetails) {

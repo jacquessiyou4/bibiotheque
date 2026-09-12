@@ -9,16 +9,13 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Renvoie l'utilisateur LOCAL de l'application associé au jeton Keycloak.
- * L'utilisateur s'authentifie auprès de Keycloak, puis le frontend a besoin
- * du userId de la table « users » de l'application (emprunts, retours…).
- * Le principal du jeton Keycloak (preferred_username) est utilisé pour
- * retrouver la ligne correspondante en base.
- */
+@Tag(name = "Utilisateur courant")
 @CrossOrigin("http://localhost:4200/")
 @RestController
 public class MeController {
@@ -26,6 +23,7 @@ public class MeController {
     @Autowired
     private UsersRepository usersRepository;
 
+    @Operation(summary = "Obtenir l'utilisateur local associé au jeton Keycloak")
     @GetMapping("/me")
     public Map<String, Object> me(Authentication authentication) {
         String username = authentication.getName();

@@ -83,11 +83,8 @@ describe('UpdateUserComponent', () => {
 
   it('onSubmit gère l\u2019erreur du service', () => {
     usersServiceSpy.updateUser.and.returnValue(throwError(() => new Error('Erreur')));
-    spyOn(console, 'log');
 
-    component.onSubmit();
-
-    expect(console.log).toHaveBeenCalled();
+    expect(() => component.onSubmit()).not.toThrow();
   });
 
   it('goToUsersList navigue vers /users', () => {

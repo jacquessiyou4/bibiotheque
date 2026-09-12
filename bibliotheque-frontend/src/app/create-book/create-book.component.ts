@@ -19,10 +19,8 @@ export class CreateBookComponent implements OnInit {
 
   saveBook() {
     this.booksService.createBook(this.book).subscribe(data => {
-      console.log(data);
       this.goToBooksList();
-    },
-    error => console.log(error));
+    });
   }
 
   goToBooksList() {
@@ -30,7 +28,6 @@ export class CreateBookComponent implements OnInit {
   }
 
   onSubmit() {
-    console.log(this.book);
     this.saveBook();
   }
 

@@ -27,11 +27,9 @@ export class UserDetailsComponent implements OnInit {
 
   ngOnInit(): void {
     this.id = +this.route.snapshot.params['userId'];
-    // console.log(this.id);
     this.user = new Users();
     this.userService.getUserById(this.id).subscribe( data => {
       this.user = data;
-      console.log(data);
     })
 
     this.getBorrowedByUser(this.id);
@@ -41,7 +39,6 @@ export class UserDetailsComponent implements OnInit {
   private getBorrowedByUser(userId: number) {
     this.borrowService.getBooksBorrowedByUser(userId).subscribe(data => {
       this.borrow = data;
-      console.log(data);
     });
   }
 

@@ -75,10 +75,7 @@ describe('ReturnBookComponent', () => {
 
   it('returnBook gère l\u2019erreur en cas d\u2019échec', () => {
     borrowServiceSpy.returnBook.and.returnValue(throwError(() => new Error('Erreur')));
-    spyOn(console, 'log');
 
-    component.returnBook(7);
-
-    expect(console.log).toHaveBeenCalled();
+    expect(() => component.returnBook(7)).not.toThrow();
   });
 });

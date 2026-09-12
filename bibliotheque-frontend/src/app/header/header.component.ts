@@ -33,7 +33,6 @@ export class HeaderComponent implements OnInit {
   }
 
   public isLoggedIn() {
-    console.log(this.name);
     return this.userAuthService.isLoggedIn();
   }
 

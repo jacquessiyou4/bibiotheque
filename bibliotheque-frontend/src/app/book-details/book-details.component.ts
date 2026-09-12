@@ -27,11 +27,9 @@ export class BookDetailsComponent implements OnInit {
 
   ngOnInit(): void {
     this.id = this.route.snapshot.params['bookId'];
-    // console.log(this.id);
     this.book = new Books();
     this.bookService.getBookById(this.id).subscribe( data => {
       this.book = data;
-      console.log(data);
     })
 
     this.getBorrowHistory(this.id);
@@ -41,7 +39,6 @@ export class BookDetailsComponent implements OnInit {
   private getBorrowHistory(bookId: number) {
     this.borrowService.getBookBorrowHistory(bookId).subscribe(data => {
       this.borrow = data;
-      console.log(data);
     });
   }
 

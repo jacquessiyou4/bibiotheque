@@ -6,12 +6,15 @@ import com.ibizabroker.bibliotheque.exceptions.NotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Tag(name = "Livres", description = "CRUD des livres (admin)")
 @CrossOrigin("http://localhost:4200/")
 @RestController
 @RequestMapping("/admin")
@@ -20,11 +23,13 @@ public class BooksController {
     @Autowired
     private BooksRepository booksRepository;
 
+    @Operation(summary = "Lister tous les livres")
     @GetMapping("/books")
     public List<Books> getAllBooks(){
         return booksRepository.findAll();
     }
 
+    @Operation(summary = "Obtenir un livre par son identifiant")
     @PreAuthorize("hasRole('Admin')")
     @GetMapping("/books/{id}")
     public ResponseEntity<Books> getBookById(@PathVariable Integer id) {
@@ -32,12 +37,14 @@ public class BooksController {
         return ResponseEntity.ok(book);
     }
 
+    @Operation(summary = "Créer un nouveau livre")
     @PreAuthorize("hasRole('Admin')")
     @PostMapping("/books")
     public Books createBook(@RequestBody Books book) {
         return booksRepository.save(book);
     }
 
+    @Operation(summary = "Modifier un livre existant")
     @PreAuthorize("hasRole('Admin')")
     @PutMapping("/books/{id}")
     public ResponseEntity<Books> updateBook(@PathVariable Integer id, @RequestBody Books bookDetails) {
@@ -52,6 +59,7 @@ public class BooksController {
         return ResponseEntity.ok(updatedBook);
     }
 
+    @Operation(summary = "Supprimer un livre")
     @PreAuthorize("hasRole('Admin')")
     @DeleteMapping("/books/{id}")
     public ResponseEntity<Map<String, Boolean>> deleteBook(@PathVariable Integer id) {

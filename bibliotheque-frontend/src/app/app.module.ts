@@ -1,4 +1,4 @@
-import { NgModule } from '@angular/core';
+import { ErrorHandler, NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http'
 import { AppRoutingModule } from './app-routing.module';
@@ -29,6 +29,7 @@ import { ReservationListComponent } from './reservations/reservation-list/reserv
 import { ReservationFormComponent } from './reservations/reservation-form/reservation-form.component';
 import { BorrowListComponent } from './borrow-list/borrow-list.component';
 import { TranslatePipe } from './_i18n/translate.pipe';
+import { AppErrorHandler } from './_service/error-handler.service';
 
 @NgModule({
   declarations: [
@@ -62,6 +63,7 @@ import { TranslatePipe } from './_i18n/translate.pipe';
     RouterModule
   ],
   providers: [
+    { provide: ErrorHandler, useClass: AppErrorHandler },
     AuthGuard,
     {
       provide: HTTP_INTERCEPTORS,

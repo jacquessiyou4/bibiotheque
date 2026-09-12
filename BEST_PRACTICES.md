@@ -508,19 +508,615 @@ export class BooksListComponent implements OnInit {
 
 ---
 
-## Résumé — Plan d'action
+## 🔴 Priorité critique — Sécurité & fiabilité (nouvelles recommandations)
+
+### 17. Réactiver `@PreAuthorize` sur la création d'utilisateurs
+
+**Fichier :** `AdminController.java:42`
+
+L'annotation `@PreAuthorize("hasRole('Admin')")` est commentée sur
+`addUserByAdmin()`. N'importe qui (même non authentifié) peut créer
+des comptes admin.
+
+```java
+// Avant — n'importe qui peut créer un admin
+@PostMapping("/users")
+//  @PreAuthorize("hasRole('Admin')")
+public Users addUserByAdmin(@Valid @RequestBody UserCreateRequest request) { ... }
+
+// Après
+@PostMapping("/users")
+@PreAuthorize("hasRole('Admin')")
+public Users addUserByAdmin(@Valid @RequestBody UserCreateRequest request) { ... }
+```
+
+---
+
+### 18. Sécuriser le BorrowController
+
+**Fichier :** `BorrowController.java`
+
+Le contrôleur d'emprunt n'a aucune annotation `@PreAuthorize`. De plus,
+`/borrow/**` est dans la liste `permitAll()` de `WebSecurityConfiguration`.
+Toute personne peut emprunter, retourner, et voir tous les emprunts.
+
+```java
+@RestController
+@RequestMapping("/borrow")
+@Slf4j
+public class BorrowController {
+
+    @PreAuthorize("hasAnyRole('User', 'Admin')")
+    @PostMapping
+    public ResponseEntity<?> borrowBook(@Valid @RequestBody Borrow request) { ... }
+
+    @PreAuthorize("hasAnyRole('User', 'Admin')")
+    @PutMapping
+    public ResponseEntity<?> returnBook(@Valid @RequestBody Borrow request) { ... }
+}
+```
+
+> **Note :** Retirer `/borrow/**` de `permitAll()` dans
+> `WebSecurityConfiguration`.
+
+---
+
+### 19. Externaliser la clé secrète JWT
+
+**Fichier :** `JwtUtil.java:17`
+
+La clé de signature JWT est en dur dans le code :
+`"learn_programming_yourself"`. C'est une faille critique.
+
+```java
+// Avant
+private static final String SECRET_KEY = "learn_programming_yourself";
+
+// Après — injecter depuis application.properties
+@Value("${jwt.secret}")
+private String secretKey;
+```
+
+```properties
+# application.properties
+jwt.secret=${JWT_SECRET:clé-par-défaut-seulement-en-dev}
+```
+
+---
+
+### 20. Remplacer `Optional.get()` par `orElseThrow()`
+
+**Fichiers :** `BorrowController.java` (lignes 33, 34, 62, 63),
+`JwtService.java` (lignes 42, 48)
+
+`Optional.get()` lève `NoSuchElementException` (500) si l'élément
+n'existe pas. Utiliser `orElseThrow()` avec une exception métier.
+
+```java
+// Avant — crash si pas trouvé
+usersRepository.findById(borrow.getUserId()).get();
+
+// Après — erreur 404 propre
+usersRepository.findById(borrow.getUserId())
+    .orElseThrow(() -> new NotFoundException("Utilisateur introuvable"));
+```
+
+---
+
+### 21. Supprimer les identifiants en dur dans `application.properties`
+
+**Fichier :** `application.properties:4-5`
+
+```properties
+# Avant — credentials en dur
+spring.datasource.username=postgres
+spring.datasource.password=postgres
+
+# Après — variables d'environnement uniquement
+spring.datasource.username=${POSTGRES_USER}
+spring.datasource.password=${POSTGRES_PASSWORD}
+```
+
+---
+
+## 🟠 Priorité haute — Architecture (nouvelles recommandations)
+
+### 22. Ajouter une couche Service pour Books et Borrow
+
+**Fichiers :** `BooksController.java`, `BorrowController.java`
+
+Les contrôleurs injectent directement les repositories. Cela viole
+l'architecture en couches et rend le code difficile à tester.
+
+```java
+// Créer BooksService
+@Service
+@Slf4j
+public class BooksService {
+    private final BooksRepository booksRepository;
+
+    public BooksService(BooksRepository booksRepository) {
+        this.booksRepository = booksRepository;
+    }
+
+    public Page<Books> getAllBooks(Pageable pageable) {
+        return booksRepository.findAll(pageable);
+    }
+    // ...
+}
+
+// Utiliser dans le contrôleur
+@RestController
+public class BooksController {
+    private final BooksService booksService;
+
+    public BooksController(BooksService booksService) {
+        this.booksService = booksService;
+    }
+}
+```
+
+---
+
+### 23. Injection par constructeur au lieu de `@Autowired`
+
+**Fichiers :** Tous les contrôleurs et services
+
+L'injection par champ (`@Autowired` sur le champ) est déconseillée.
+L'injection par constructeur est testable et immutable.
+
+```java
+// Avant
+@Autowired
+private BooksRepository booksRepository;
+
+// Après
+private final BooksRepository booksRepository;
+
+public BooksController(BooksRepository booksRepository) {
+    this.booksRepository = booksRepository;
+}
+```
+
+---
+
+### 24. Ajouter `@ControllerAdvice` pour la gestion globale des erreurs
+
+**Fichier :** `GlobalExceptionHandler.java` (nouveau)
+
+Aucun `@ControllerAdvice` n'existe. Les exceptions retournent des
+réponses 500 sans structure.
+
+```java
+@RestControllerAdvice
+@Slf4j
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFound(NotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(new ErrorResponse(404, ex.getMessage()));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
+        Map<String, String> errors = ex.getBindingResult().getFieldErrors().stream()
+            .collect(Collectors.toMap(
+                FieldError::getField,
+                fe -> fe.getDefaultMessage() != null ? fe.getDefaultMessage() : " invalide"
+            ));
+        return ResponseEntity.badRequest()
+            .body(new ErrorResponse(400, "Erreur de validation", errors));
+    }
+}
+```
+
+---
+
+### 25. Supprimer les `@CrossOrigin` en dur sur les contrôleurs
+
+**Fichiers :** Tous les contrôleurs
+
+`@CrossOrigin("http://localhost:4200/")` est dupliqué sur chaque
+contrôleur alors qu'une `CorsConfiguration` centralisée existe déjà.
+
+```java
+// Supprimer de chaque contrôleur
+// @CrossOrigin("http://localhost:4200/")  ← supprimer
+
+// Garder uniquement CorsConfiguration.java avec :
+@Override
+public void addCorsMappings(CorsRegistry registry) {
+    registry.addMapping("/**")
+        .allowedOrigins("http://localhost:4200")
+        .allowedMethods("GET", "POST", "PUT", "DELETE");
+}
+```
+
+---
+
+### 26. Corriger `@Repository` sur BorrowController
+
+**Fichier :** `BorrowController.java:17`
+
+`@Repository` est une annotation pour les composants d'accès aux
+données, pas pour les contrôleurs.
+
+```java
+// Avant
+@Repository
+@RestController
+public class BorrowController { ... }
+
+// Après
+@RestController
+@RequestMapping("/borrow")
+public class BorrowController { ... }
+```
+
+---
+
+### 27. Nettoyer le code mort dans BorrowController
+
+**Fichier :** `BorrowController.java:84-183`
+
+Plus de 100 lignes de code commenté (3 implémentations différentes)
+doivent être supprimées. L'historique Git préserve déjà ces versions.
+
+---
+
+### 28. Ajouter le nettoyage des subscriptions RxJS
+
+**Fichiers :** Tous les composants avec `.subscribe()`
+
+Aucun composant n'implémente `OnDestroy` pour nettoyer les abonnements.
+Cela cause des fuites mémoire si le composant est détruit avant
+l'achèvement de l'Observable.
+
+```typescript
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
+
+@Component({...})
+export class BooksListComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
+
+  ngOnInit(): void {
+    this.booksService.getBooksList()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(data => this.books = data);
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+}
+```
+
+---
+
+### 29. Ajouter des gestionnaires d'erreur dans les subscriptions
+
+**Fichiers :** 13+ appels `.subscribe()` sans callback d'erreur
+
+La plupart des appels réseau n'ont pas de gestionnaire d'erreur.
+Les erreurs sont silencieusement ignorées.
+
+```typescript
+// Avant
+this.booksService.getBooksList().subscribe(data => {
+  this.books = data;
+});
+
+// Après
+this.booksService.getBooksList().subscribe({
+  next: (data) => this.books = data,
+  error: (err) => this.notificationService.showError('Erreur de chargement')
+});
+```
+
+---
+
+## 🟡 Priorité moyenne — Docker & Déploiement (nouvelles recommandations)
+
+### 30. Ajouter des `restart` policies aux services Docker
+
+**Fichier :** `docker-compose.yml`
+
+Les containers ne redémarrent pas automatiquement après un crash ou
+un redémarrage de l'hôte.
+
+```yaml
+services:
+  backend:
+    restart: unless-stopped
+  frontend:
+    restart: unless-stopped
+  keycloak:
+    restart: unless-stopped
+  db:
+    restart: unless-stopped
+```
+
+---
+
+### 31. Ajouter des limites de ressources aux containers
+
+**Fichier :** `docker-compose.yml`
+
+Un processus déréglé peut épuiser toutes les ressources de l'hôte.
+
+```yaml
+services:
+  backend:
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+```
+
+---
+
+### 32. Ajouter un healthcheck au backend
+
+**Fichier :** `docker-compose.yml`
+
+Le `depends_on` n'attend que le démarrage du container, pas sa
+disponibilité.
+
+```yaml
+backend:
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+    interval: 10s
+    timeout: 5s
+    retries: 5
+    start_period: 30s
+```
+
+---
+
+### 33. Rendre Caddy optionnel avec un profile Docker
+
+**Fichier :** `docker-compose.yml`
+
+Caddy est défini sans profile, donc `docker compose up` le démarre
+toujours. Utiliser un profile pour le rendre optionnel.
+
+```yaml
+services:
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["https"]
+    ...
+
+# Utilisation :
+# docker compose up                    ← sans HTTPS
+# docker compose --profile https up    ← avec HTTPS
+```
+
+---
+
+### 34. Rendre les ports configurables via `.env`
+
+**Fichier :** `docker-compose.yml`
+
+Les ports sont en dur (5435, 8080, 4200, 8081). Les rendre
+configurables via `.env`.
+
+```yaml
+ports:
+  - "${POSTGRES_PORT:-5435}:5432"
+  - "${BACKEND_PORT:-8080}:8080"
+  - "${FRONTEND_PORT:-4200}:80"
+  - "${KEYCLOAK_PORT:-8081}:8080"
+```
+
+---
+
+## 🟡 Priorité moyenne — Qualité du code (nouvelles recommandations)
+
+### 35. Ajouter la validation côté client
+
+**Fichiers :** Tous les formulaires Angular
+
+Les formulaires n'ont aucune validation côté client. Des formulaires
+vides peuvent être soumis.
+
+```html
+<!-- Avant -->
+<input type="text" [(ngModel)]="user.username">
+
+<!-- Après -->
+<input type="text" [(ngModel)]="user.username" required #username="ngModel">
+<div *ngIf="username.invalid && username.touched" class="error">
+  Le nom d'utilisateur est obligatoire.
+</div>
+```
+
+---
+
+### 36. Ajouter une confirmation avant suppression
+
+**Fichier :** `books-list.component.ts:33`
+
+La suppression de livre se fait sans confirmation. `ReservationListComponent`
+utilise déjà `window.confirm()`.
+
+```typescript
+// Avant
+deleteBook(bookId: number) {
+  this.booksService.deleteBook(bookId).subscribe(() => this.getBooks());
+}
+
+// Après
+deleteBook(bookId: number) {
+  if (window.confirm('Êtes-vous sûr de vouloir supprimer ce livre ?')) {
+    this.booksService.deleteBook(bookId).subscribe(() => this.getBooks());
+  }
+}
+```
+
+---
+
+### 37. Ajouter des headers de sécurité dans nginx
+
+**Fichier :** `bibliotheque-frontend/nginx.conf`
+
+Aucun header de sécurité n'est configuré dans nginx.
+
+```nginx
+server {
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'" always;
+}
+```
+
+---
+
+### 38. Désactiver `show-sql` en production
+
+**Fichier :** `application.properties:8`
+
+`spring.jpa.show-sql=true` logue le SQL dans stdout, ce qui peut
+exposer des données sensibles.
+
+```properties
+# Utiliser un profile pour la production
+spring.profiles.active=${SPRING_PROFILES_ACTIVE:dev}
+
+# application-dev.properties
+spring.jpa.show-sql=true
+
+# application-prod.properties
+spring.jpa.show-sql=false
+```
+
+---
+
+### 39. Remplacer `ddl-auto=update` par Flyway
+
+**Fichier :** `application.properties:10`
+
+`spring.jpa.hibernate.ddl-auto=update` peut modifier silencieusement
+le schéma de production.
+
+```properties
+# Avant
+spring.jpa.hibernate.ddl-auto=update
+
+# Après — utiliser Flyway pour les migrations
+spring.jpa.hibernate.ddl-auto=validate
+spring.flyway.enabled=true
+spring.flyway.locations=classpath:db/migration
+```
+
+---
+
+### 40. Corriger `CascadeType.ALL` sur les rôles utilisateur
+
+**Fichier :** `Users.java:28`
+
+`CascadeType.ALL` sur `@ManyToMany` pour les rôles signifie que
+supprimer un utilisateur cascade-supprime les rôles, affectant les
+autres utilisateurs.
+
+```java
+// Avant
+@ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+
+// Après
+@ManyToMany(fetch = FetchType.EAGER, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+```
+
+---
+
+## 🟢 Priorité basse — Nice-to-have (nouvelles recommandations)
+
+### 41. Ajouter des tests unitaires pour les contrôleurs
+
+**Fichiers :** `BooksController.java`, `BorrowController.java`,
+`AdminController.java`, `MeController.java`
+
+Aucun test unitaire n'existe pour les contrôleurs. Seuls des tests
+d'intégration avec MockMvc sont présents.
+
+---
+
+### 42. Ajouter la couverture de code dans le CI
+
+**Fichiers :** `pom.xml`, `.github/workflows/ci.yml`
+
+Aucun JaCoCo pour le backend, aucun reporter de couverture pour le
+frontend. Le CI ne vérifie pas le minimum de couverture.
+
+```yaml
+# Ajouter au pipeline CI
+- name: Run tests with coverage
+  run: cd bibliotheque-backend && mvn -B test jacoco:report
+```
+
+---
+
+### 43. Corriger les incohérences de nommage des entités
+
+**Fichiers :** Toutes les entités
+
+Le code mélange français et anglais : `Books`, `Users`, `Borrow`
+(anglais) vs `Reservation`, `StatutReservation` (français). Les noms
+de tables sont aussi incohérents (`Books` vs `reservation`).
+
+---
+
+### 44. Standardiser la stratégie de génération d'IDs
+
+**Fichiers :** `Books.java`, `Users.java`, `Borrow.java`,
+`Reservation.java`
+
+`Books` et `Users` utilisent `GenerationType.AUTO`, tandis que
+`Borrow` et `Reservation` utilisent `GenerationType.IDENTITY`.
+
+---
+
+## Résumé — Plan d'action complet
 
 | Priorité | Action | Effort | Impact |
 |---|---|---|---|
-| 🔴 | Supprimer `console.log` frontend | Faible | Sécurité |
-| 🔴 | Ajouter HTTPS (reverse proxy) | Moyen | Sécurité |
-| 🟠 | ErrorHandler global Angular | Moyen | UX / Maintenance |
-| 🟠 | DTOs pour l'API backend | Moyen | Sécurité / API |
-| 🟠 | Pagination | Moyen | Performance |
-| 🟡 | Validation des entrées (`@Valid`) | Faible | Robustesse |
-| 🟡 | `switchMap` au lieu de `subscribe` imbriqués | Faible | Lisibilité |
-| 🟢 | Pipeline CI/CD | Moyen | Fiabilité |
-| 🟢 | Swagger annotations | Faible | Documentation |
+| 🔴 | ~~Supprimer `console.log` frontend~~ | Faible | Sécurité |
+| 🔴 | ~~Ajouter HTTPS (reverse proxy)~~ | Moyen | Sécurité |
+| 🔴 | Réactiver `@PreAuthorize` sur addUser | Faible | Sécurité |
+| 🔴 | Sécuriser BorrowController | Faible | Sécurité |
+| 🔴 | Externaliser clé JWT | Faible | Sécurité |
+| 🔴 | Remplacer `Optional.get()` | Faible | Fiabilité |
+| 🔴 | Supprimer credentials en dur | Faible | Sécurité |
+| 🟠 | ~~ErrorHandler global Angular~~ | Moyen | UX / Maintenance |
+| 🟠 | ~~DTOs pour l'API backend~~ | Moyen | Sécurité / API |
+| 🟠 | ~~Pagination~~ | Moyen | Performance |
+| 🟠 | Couche Service pour Books/Borrow | Moyen | Architecture |
+| 🟠 | Injection par constructeur | Moyen | Testabilité |
+| 🟠 | `@ControllerAdvice` global | Moyen | Maintenance |
+| 🟠 | Supprimer `@CrossOrigin` en dur | Faible | Cohérence |
+| 🟠 | Nettoyage RxJS subscriptions | Moyen | Fiabilité |
+| 🟠 | Gestionnaires d'erreur subscriptions | Faible | Robustesse |
+| 🟡 | ~~Validation des entrées (`@Valid`)~~ | Faible | Robustesse |
+| 🟡 | ~~`switchMap` au lieu de `subscribe` imbriqués~~ | Faible | Lisibilité |
+| 🟡 | `restart` policies Docker | Faible | Disponibilité |
+| 🟡 | Limites de ressources containers | Faible | Stabilité |
+| 🟡 | Healthcheck backend | Faible | Disponibilité |
+| 🟡 | Validation côté client Angular | Faible | UX |
+| 🟡 | Headers sécurité nginx | Faible | Sécurité |
+| 🟡 | Désactiver `show-sql` | Faible | Sécurité |
+| 🟡 | Remplacer `ddl-auto` par Flyway | Moyen | Fiabilité |
+| 🟢 | ~~Pipeline CI/CD~~ | Moyen | Fiabilité |
+| 🟢 | ~~Swagger annotations~~ | Faible | Documentation |
+| 🟢 | Tests unitaires contrôleurs | Moyen | Qualité |
+| 🟢 | Couverture de code CI | Moyen | Qualité |
+| 🟢 | ~~OnPush change detection~~ | Faible | Performance |
 
 ---
 

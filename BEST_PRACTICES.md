@@ -621,7 +621,7 @@ spring.datasource.password=${POSTGRES_PASSWORD}
 
 ## 🟠 Priorité haute — Architecture (nouvelles recommandations)
 
-### 22. Ajouter une couche Service pour Books et Borrow
+### ~~22. Ajouter une couche Service pour Books et Borrow~~
 
 **Fichiers :** `BooksController.java`, `BorrowController.java`
 
@@ -658,7 +658,7 @@ public class BooksController {
 
 ---
 
-### 23. Injection par constructeur au lieu de `@Autowired`
+### ~~23. Injection par constructeur au lieu de `@Autowired`~~
 
 **Fichiers :** Tous les contrôleurs et services
 
@@ -680,7 +680,7 @@ public BooksController(BooksRepository booksRepository) {
 
 ---
 
-### 24. Ajouter `@ControllerAdvice` pour la gestion globale des erreurs
+### ~~24. Ajouter `@ControllerAdvice` pour la gestion globale des erreurs~~
 
 **Fichier :** `GlobalExceptionHandler.java` (nouveau)
 
@@ -765,7 +765,7 @@ doivent être supprimées. L'historique Git préserve déjà ces versions.
 
 ---
 
-### 28. Ajouter le nettoyage des subscriptions RxJS
+### ~~28. Ajouter le nettoyage des subscriptions RxJS~~
 
 **Fichiers :** Tous les composants avec `.subscribe()`
 
@@ -1097,11 +1097,11 @@ de tables sont aussi incohérents (`Books` vs `reservation`).
 | 🟠 | ~~ErrorHandler global Angular~~ | Moyen | UX / Maintenance |
 | 🟠 | ~~DTOs pour l'API backend~~ | Moyen | Sécurité / API |
 | 🟠 | ~~Pagination~~ | Moyen | Performance |
-| 🟠 | Couche Service pour Books/Borrow | Moyen | Architecture |
-| 🟠 | Injection par constructeur | Moyen | Testabilité |
-| 🟠 | `@ControllerAdvice` global | Moyen | Maintenance |
+| 🟠 | ~~Couche Service pour Books/Borrow~~ | Moyen | Architecture |
+| 🟠 | ~~Injection par constructeur~~ | Moyen | Testabilité |
+| 🟠 | ~~`@ControllerAdvice` global~~ | Moyen | Maintenance |
 | 🟠 | Supprimer `@CrossOrigin` en dur | Faible | Cohérence |
-| 🟠 | Nettoyage RxJS subscriptions | Moyen | Fiabilité |
+| 🟠 | ~~Nettoyage RxJS subscriptions~~ | Moyen | Fiabilité |
 | 🟠 | Gestionnaires d'erreur subscriptions | Faible | Robustesse |
 | 🟡 | ~~Validation des entrées (`@Valid`)~~ | Faible | Robustesse |
 | 🟡 | ~~`switchMap` au lieu de `subscribe` imbriqués~~ | Faible | Lisibilité |

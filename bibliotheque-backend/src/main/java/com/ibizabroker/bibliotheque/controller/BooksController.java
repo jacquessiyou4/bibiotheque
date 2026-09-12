@@ -10,8 +10,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @Tag(name = "Livres", description = "CRUD des livres (admin)")
@@ -23,10 +27,14 @@ public class BooksController {
     @Autowired
     private BooksRepository booksRepository;
 
-    @Operation(summary = "Lister tous les livres")
+    @Operation(summary = "Lister les livres (pagination)")
     @GetMapping("/books")
-    public List<Books> getAllBooks(){
-        return booksRepository.findAll();
+    public Page<Books> getAllBooks(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "bookId") String sortBy) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy));
+        return booksRepository.findAll(pageable);
     }
 
     @Operation(summary = "Obtenir un livre par son identifiant")
@@ -40,14 +48,14 @@ public class BooksController {
     @Operation(summary = "Créer un nouveau livre")
     @PreAuthorize("hasRole('Admin')")
     @PostMapping("/books")
-    public Books createBook(@RequestBody Books book) {
+    public Books createBook(@Valid @RequestBody Books book) {
         return booksRepository.save(book);
     }
 
     @Operation(summary = "Modifier un livre existant")
     @PreAuthorize("hasRole('Admin')")
     @PutMapping("/books/{id}")
-    public ResponseEntity<Books> updateBook(@PathVariable Integer id, @RequestBody Books bookDetails) {
+    public ResponseEntity<Books> updateBook(@PathVariable Integer id, @Valid @RequestBody Books bookDetails) {
         Books book = booksRepository.findById(id).orElseThrow(() -> new NotFoundException("Book with id "+ id +" does not exist."));
 
         book.setBookName(bookDetails.getBookName());

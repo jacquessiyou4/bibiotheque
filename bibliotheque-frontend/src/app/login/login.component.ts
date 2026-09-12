@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { NgForm } from '@angular/forms';
 import { Router } from '@angular/router';
+import { switchMap } from 'rxjs/operators';
+import { of } from 'rxjs';
 import { UserAuthService } from '../_service/user-auth.service';
 import { UsersService } from '../_service/users.service';
 
@@ -26,32 +28,26 @@ export class LoginComponent implements OnInit {
   }
 
   login(loginForm: NgForm) {
-    this.userService.login(loginForm).subscribe(
-      (response: any) => {
-        // Réponse Keycloak : { access_token, refresh_token, expires_in, … }
+    this.userService.login(loginForm).pipe(
+      switchMap((response: any) => {
         const accessToken = response.access_token;
         const payload = this.userAuthSerivce.decodeJwt(accessToken);
         const roles: string[] = (payload.realm_access && payload.realm_access.roles) || [];
 
-        // Rôles stockés au format attendu par roleMatch : [{ roleName }].
         this.userAuthSerivce.setRoles(roles.map((r) => ({ roleName: r })));
         this.userAuthSerivce.setToken(accessToken);
         this.userAuthSerivce.setName(payload.name || payload.preferred_username);
 
-        // userId local : résolu par le backend /me à partir du jeton Keycloak.
-        this.userService.getMe().subscribe(
-          (me: any) => {
+        return this.userService.getMe().pipe(
+          switchMap((me: any) => {
             this.userAuthSerivce.setUserId(me.userId);
             this.userAuthSerivce.setName(me.name);
             this.navigateAfterLogin(roles);
-          },
-          () => {
-            this.navigateAfterLogin(roles);
-          }
+            return of(null);
+          })
         );
-      },
-      () => {}
-    );
+      })
+    ).subscribe();
   }
 
   private navigateAfterLogin(roles: string[]) {

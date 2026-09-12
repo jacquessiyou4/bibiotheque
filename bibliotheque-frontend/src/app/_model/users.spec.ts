@@ -20,12 +20,11 @@ describe('Users', () => {
     expect(user.role).toEqual([{ roleName: 'ADHERENT' }]);
   });
 
-  it('should serialize from JSON', () => {
+  it('should serialize from JSON (password omitted by @JsonIgnore)', () => {
     const json = {
       userId: 42,
       username: 'jane',
       name: 'Jane Smith',
-      password: 'pass',
       role: [{ roleName: 'BIBLIOTHECAIRE' }]
     };
     const user: Users = Object.assign(new Users(), json);

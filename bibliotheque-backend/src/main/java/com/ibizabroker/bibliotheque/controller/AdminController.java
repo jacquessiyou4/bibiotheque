@@ -11,7 +11,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import javax.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 @Tag(name = "Utilisateurs", description = "Gestion des utilisateurs (admin)")
 @CrossOrigin("http://localhost:4200/")
@@ -28,7 +32,7 @@ public class AdminController {
     @Operation(summary = "Créer un nouvel utilisateur")
     @PostMapping("/users")
 //    @PreAuthorize("hasRole('Admin')")
-    public Users addUserByAdmin(@RequestBody Users user) {
+    public Users addUserByAdmin(@Valid @RequestBody Users user) {
 //        Role role = new Role();
 ////        role.setRoleName(UserConstant.DEFAULT_ROLE);
 //        role.setRoleName(role.getRoleName());
@@ -42,11 +46,15 @@ public class AdminController {
         return user;
     }
 
-    @Operation(summary = "Lister tous les utilisateurs")
+    @Operation(summary = "Lister les utilisateurs (pagination)")
     @GetMapping("/users")
     @PreAuthorize("hasRole('Admin')")
-    public List<Users> getAllUsers() {
-        return usersRepository.findAll();
+    public Page<Users> getAllUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "userId") String sortBy) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy));
+        return usersRepository.findAll(pageable);
     }
 
     @Operation(summary = "Obtenir un utilisateur par son identifiant")
@@ -60,7 +68,7 @@ public class AdminController {
     @Operation(summary = "Modifier un utilisateur existant")
     @PreAuthorize("hasRole('Admin')")
     @PutMapping("/users/{id}")
-    public ResponseEntity<Users> updateUser(@PathVariable Integer id, @RequestBody Users userDetails) {
+    public ResponseEntity<Users> updateUser(@PathVariable Integer id, @Valid @RequestBody Users userDetails) {
         Users user = usersRepository.findById(id).orElseThrow(() -> new NotFoundException("User with id "+ id +" does not exist."));
 
         user.setName(userDetails.getName());

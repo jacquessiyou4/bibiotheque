@@ -39,7 +39,7 @@ public class AdminController {
 
     @Operation(summary = "Créer un nouvel utilisateur")
     @PostMapping("/users")
-//    @PreAuthorize("hasRole('Admin')")
+    @PreAuthorize("hasRole('Admin')")
     public Users addUserByAdmin(@Valid @RequestBody UserCreateRequest request) {
         log.info("Requête POST /admin/users — création de l'utilisateur '{}'", request.getUsername());
         Users user = new Users();

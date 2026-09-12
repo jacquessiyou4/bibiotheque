@@ -26,24 +26,43 @@ export class LoginComponent implements OnInit {
   }
 
   login(loginForm: NgForm) {
-    this.userService.login(loginForm.value).subscribe(
-      (response: any)=>{
-        this.userAuthSerivce.setRoles(response.user.role);
-        this.userAuthSerivce.setToken(response.jwtToken);
-        this.userAuthSerivce.setUserId(response.user.userId);
-        this.userAuthSerivce.setName(response.user.name);
+    this.userService.login(loginForm).subscribe(
+      (response: any) => {
+        // Réponse Keycloak : { access_token, refresh_token, expires_in, … }
+        const accessToken = response.access_token;
+        const payload = this.userAuthSerivce.decodeJwt(accessToken);
+        const roles: string[] = (payload.realm_access && payload.realm_access.roles) || [];
 
-        const role = response.user.role[0].roleName;
-        if(role === 'Admin') {
-          this.router.navigate(['/books']);
-        } else {
-          this.router.navigate(['/borrow-book']) //update later
-        }
+        // Rôles stockés au format attendu par roleMatch : [{ roleName }].
+        this.userAuthSerivce.setRoles(roles.map((r) => ({ roleName: r })));
+        this.userAuthSerivce.setToken(accessToken);
+        this.userAuthSerivce.setName(payload.name || payload.preferred_username);
+
+        // userId local : résolu par le backend /me à partir du jeton Keycloak.
+        this.userService.getMe().subscribe(
+          (me: any) => {
+            this.userAuthSerivce.setUserId(me.userId);
+            this.userAuthSerivce.setName(me.name);
+            this.navigateAfterLogin(roles);
+          },
+          () => {
+            console.warn('Compte Keycloak sans utilisateur local : les emprunts ne fonctionneront pas.');
+            this.navigateAfterLogin(roles);
+          }
+        );
       },
-      (error)=>{
+      (error) => {
         console.log(error);
       }
     );
+  }
+
+  private navigateAfterLogin(roles: string[]) {
+    if (roles.indexOf('Admin') !== -1) {
+      this.router.navigate(['/books']);
+    } else {
+      this.router.navigate(['/borrow-book']);
+    }
   }
 
 }

@@ -22,7 +22,10 @@ export class ReservationListComponent implements OnChanges {
 
   @Input() reservations: Reservation[] = [];
   @Input() cancellingId: number | null = null;
+  @Input() deletingId: number | null = null;
+  @Input() isBibliothecaire = false;
   @Output() cancel = new EventEmitter<number>();
+  @Output() delete = new EventEmitter<number>();
 
   triParExpirationAsc = true;
   page = 1;
@@ -80,5 +83,9 @@ export class ReservationListComponent implements OnChanges {
     if (confirme) {
       this.cancel.emit(reservation.id);
     }
+  }
+
+  onSupprimer(reservation: Reservation): void {
+    this.delete.emit(reservation.id);
   }
 }

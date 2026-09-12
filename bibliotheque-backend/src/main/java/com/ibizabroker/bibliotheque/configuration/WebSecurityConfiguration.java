@@ -50,6 +50,18 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                 .authorizeRequests().antMatchers("/authenticate", "/borrow/**", "/admin/books/").permitAll()
                 .antMatchers(HttpHeaders.ALLOW).permitAll()
                 .antMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                // --- Application fusionnée : le build Angular est servi par
+                // Spring Boot depuis /static --- On autorise sans jeton les
+                // fichiers statiques du SPA et ses routes client (le routeur
+                // Angular gère lui-même la garde AuthGuard). Les API REST
+                // restent protégées par JWT : /admin/**, /me, /api/reservations...
+                .antMatchers("/", "/index.html", "/favicon.ico").permitAll()
+                .antMatchers("/assets/**").permitAll()
+                .antMatchers("/*.js", "/*.css", "/*.map").permitAll()
+                .antMatchers("/books", "/create-book", "/update-book/*", "/book-details/*",
+                        "/users", "/register-user", "/user-details/*", "/update-user/*",
+                        "/login", "/logout", "/forbidden", "/borrow-book", "/return-book",
+                        "/reservations", "/borrow-list", "/home", "/error").permitAll()
                 .anyRequest().authenticated()
                 .and()
                 .exceptionHandling()

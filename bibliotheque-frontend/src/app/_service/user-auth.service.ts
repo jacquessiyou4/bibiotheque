@@ -7,11 +7,11 @@ export class UserAuthService {
 
   constructor() { }
 
-  public setRoles(roles: []) {
+  public setRoles(roles: { roleName: string }[]) {
     localStorage.setItem('roles', JSON.stringify(roles));
   }
 
-  public getRoles(): [] {
+  public getRoles(): { roleName: string }[] {
     return JSON.parse(localStorage.getItem('roles')!);
   }
 
@@ -41,6 +41,25 @@ export class UserAuthService {
 
   public clear() {
     localStorage.clear();
+  }
+
+  /**
+   * Décode la partie « payload » d'un JWT (sans en vérifier la signature :
+   * la validation est faite par le backend et Keycloak).
+   */
+  public decodeJwt(token: string): any {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join(''));
+      return JSON.parse(jsonPayload);
+    } catch (e) {
+      console.error('Impossible de décoder le JWT', e);
+      return {};
+    }
   }
 
   public isLoggedIn() {

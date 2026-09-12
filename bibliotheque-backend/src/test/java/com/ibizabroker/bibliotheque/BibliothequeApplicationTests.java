@@ -5,9 +5,13 @@ import com.ibizabroker.bibliotheque.dao.BorrowRepository;
 import com.ibizabroker.bibliotheque.dao.ReservationRepository;
 import com.ibizabroker.bibliotheque.dao.UsersRepository;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.ApplicationContext;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Vérifie que le contexte applicatif se charge sans base de données ni
@@ -39,8 +43,16 @@ class BibliothequeApplicationTests {
 	@MockBean
 	private JwtDecoder jwtDecoder;
 
+	@Autowired
+	private ApplicationContext applicationContext;
+
 	@Test
 	void contextLoads() {
+		assertThat(applicationContext).isNotNull();
+		assertThat(applicationContext.getBean(BooksRepository.class)).isNotNull();
+		assertThat(applicationContext.getBean(UsersRepository.class)).isNotNull();
+		assertThat(applicationContext.getBean(BorrowRepository.class)).isNotNull();
+		assertThat(applicationContext.getBean(ReservationRepository.class)).isNotNull();
 	}
 
 }

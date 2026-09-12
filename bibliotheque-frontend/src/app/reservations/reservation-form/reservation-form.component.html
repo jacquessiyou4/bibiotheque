@@ -12,13 +12,19 @@
     </div>
 
     <div class="col-12 col-md-4">
-      <label for="adherentId" class="form-label">{{ 'reservations.adherent' | translate }}</label>
-      <select id="adherentId" class="form-select" name="adherentId" [(ngModel)]="adherentId" (ngModelChange)="onAdherentChange()">
-        <option [ngValue]="null">{{ 'reservations.chooseAdherent' | translate }}</option>
-        <option *ngFor="let adherent of adherents" [ngValue]="adherent.userId">
-          {{ adherent.name }}
-        </option>
-      </select>
+      <ng-container *ngIf="readonlyAdherentId === null; else selfAdherentBlock">
+        <label for="adherentId" class="form-label">{{ 'reservations.adherent' | translate }}</label>
+        <select id="adherentId" class="form-select" name="adherentId" [(ngModel)]="adherentId" (ngModelChange)="onAdherentChange()">
+          <option [ngValue]="null">{{ 'reservations.chooseAdherent' | translate }}</option>
+          <option *ngFor="let adherent of adherents" [ngValue]="adherent.userId">
+            {{ adherent.name }}
+          </option>
+        </select>
+      </ng-container>
+      <ng-template #selfAdherentBlock>
+        <label for="adherentId" class="form-label">{{ 'reservations.adherent' | translate }}</label>
+        <input id="adherentId" type="text" class="form-control" [value]="'reservations.self' | translate" readonly disabled>
+      </ng-template>
       <div class="form-text" *ngIf="loadingCount">{{ 'reservations.checkingQuota' | translate }}</div>
       <div class="form-text" [class.text-danger]="quotaAtteint" [class.fw-bold]="quotaAtteint" *ngIf="activeCount !== null && !loadingCount">
         {{ activeCount }} / 3 {{ 'reservations.quota' | translate }}

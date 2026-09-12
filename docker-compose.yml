@@ -21,7 +21,10 @@ services:
 
   backend:
     build:
-      context: ./bibliotheque-backend
+      # Contexte = racine du projet : le Dockerfile assemble le backend ET
+      # le build Angular (bibliotheque-frontend) en un seul jar.
+      context: .
+      dockerfile: bibliotheque-backend/Dockerfile
     container_name: bibliotheque-backend
     environment:
       # Ces variables surchargent application.properties (qu'on ne modifie
@@ -46,23 +49,27 @@ services:
       db:
         condition: service_healthy
 
+  # --- Service frontend séparé (nginx) --------------------------------------
+  # Le frontend Angular est servi par nginx sur le port 4200.
+  # L'URL de l'API et de Keycloak sont injectées au démarrage via
+  # docker-entrypoint.d/40-env-config.sh (assets/env.js).
+  # Le navigateur (pas le conteneur) accède aux services via localhost.
   frontend:
     build:
       context: ./bibliotheque-frontend
     container_name: bibliotheque-frontend
     environment:
-      # Lu par docker-entrypoint.d/40-env-config.sh au démarrage de nginx.
-      # C'est le NAVIGATEUR qui exécute le code Angular, pas ce conteneur :
-      # "localhost" doit donc désigner la machine de l'utilisateur, où le
-      # port 8080 du backend est publié ci-dessus.
       API_URL: http://localhost:8080
-      # URL de l'autorité Keycloak : le NAVIGATEUR s'y authentifie (login)
-      # puis présente le jeton obtenu au backend.
       KEYCLOAK_URL: http://localhost:8081
     ports:
       - "4200:80"
     depends_on:
       - backend
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:80 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   keycloak-db:
     image: postgres:16-alpine

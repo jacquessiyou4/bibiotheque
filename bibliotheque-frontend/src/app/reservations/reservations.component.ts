@@ -6,8 +6,11 @@ import { Reservation, ReservationRequest, StatutReservation } from '../_model/re
 import { ReservationService } from '../_service/reservation.service';
 import { BooksService } from '../_service/books.service';
 import { UsersService } from '../_service/users.service';
+import { UserAuthService } from '../_service/user-auth.service';
+import { TranslationService } from '../_service/translation.service';
 
 type EtatEcran = 'chargement' | 'donnees' | 'vide' | 'erreur';
+type Onglet = 'toutes' | 'expirees';
 
 const STATUTS: StatutReservation[] = ['EN_ATTENTE', 'DISPONIBLE', 'ANNULEE', 'EXPIREE', 'HONOREE'];
 
@@ -23,6 +26,7 @@ export class ReservationsComponent implements OnInit {
   etat: EtatEcran = 'chargement';
   reservations: Reservation[] = [];
   filtreStatut: StatutReservation | '' = '';
+  onglet: Onglet = 'toutes';
 
   livres: Books[] = [];
   adherents: Users[] = [];
@@ -34,15 +38,44 @@ export class ReservationsComponent implements OnInit {
   annulationEnCoursId: number | null = null;
   erreurAnnulation: string | null = null;
 
+  suppressionEnCoursId: number | null = null;
+  erreurSuppression: string | null = null;
+
+  reservationsExpirees: Reservation[] = [];
+  etatExpirees: EtatEcran = 'chargement';
+
   constructor(
     private reservationService: ReservationService,
     private booksService: BooksService,
-    private usersService: UsersService
+    private usersService: UsersService,
+    private userAuthService: UserAuthService,
+    private translationService: TranslationService
   ) { }
+
+  /**
+   * Un BIBLIOTHECAIRE peut créer une réservation pour n'importe quel
+   * adhérent ; un ADHERENT uniquement pour lui-même (RS-04).
+   */
+  get estBibliothecaire(): boolean {
+    const roles: any[] = this.userAuthService.getRoles() || [];
+    return roles.some((r) => r.roleName === 'BIBLIOTHECAIRE');
+  }
+
+  get monUserId(): number | null {
+    try {
+      const userId = this.userAuthService.getUserId();
+      return typeof userId === 'number' ? userId : null;
+    } catch {
+      return null;
+    }
+  }
 
   ngOnInit(): void {
     this.chargerReservations();
     this.chargerReferentiels();
+    if (this.estBibliothecaire) {
+      this.chargerExpirees();
+    }
   }
 
   chargerReservations(): void {
@@ -68,6 +101,13 @@ export class ReservationsComponent implements OnInit {
       error: () => this.livres = []
     });
 
+    // Seul un BIBLIOTHECAIRE choisit l'adhérent ; un ADHERENT réserve
+    // pour lui-même (RS-04).
+    if (!this.estBibliothecaire) {
+      this.adherents = [];
+      return;
+    }
+
     this.usersService.getUsersList().subscribe({
       next: (users) => this.adherents = (users || []).filter(
         (u: any) => u.role && u.role.some((r: any) => r.roleName === 'User')),
@@ -77,6 +117,10 @@ export class ReservationsComponent implements OnInit {
 
   onFiltreChange(): void {
     this.chargerReservations();
+  }
+
+  onOngletChange(onglet: Onglet): void {
+    this.onglet = onglet;
   }
 
   onCreer(request: ReservationRequest): void {
@@ -107,6 +151,42 @@ export class ReservationsComponent implements OnInit {
       error: (err: HttpErrorResponse) => {
         this.annulationEnCoursId = null;
         this.erreurAnnulation = this.messageErreur(err, "L'annulation a échoué.");
+      }
+    });
+  }
+
+  onSupprimer(id: number): void {
+    const reservation = this.reservations.find(r => r.id === id)
+      || this.reservationsExpirees.find(r => r.id === id);
+    const nom = reservation?.livreNom || `#${id}`;
+    const confirme = window.confirm(
+      this.translationService.translate('reservations.confirmDelete', { book: nom }));
+    if (!confirme) { return; }
+
+    this.suppressionEnCoursId = id;
+    this.erreurSuppression = null;
+    this.reservationService.deleteReservation(id).subscribe({
+      next: () => {
+        this.suppressionEnCoursId = null;
+        this.chargerReservations();
+        this.chargerExpirees();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.suppressionEnCoursId = null;
+        this.erreurSuppression = this.messageErreur(err, "La suppression a échoué.");
+      }
+    });
+  }
+
+  chargerExpirees(): void {
+    this.etatExpirees = 'chargement';
+    this.reservationService.getExpiredReservations().subscribe({
+      next: (data) => {
+        this.reservationsExpirees = data;
+        this.etatExpirees = data.length === 0 ? 'vide' : 'donnees';
+      },
+      error: () => {
+        this.etatExpirees = 'erreur';
       }
     });
   }

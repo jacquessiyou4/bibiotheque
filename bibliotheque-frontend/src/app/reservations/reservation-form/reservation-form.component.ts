@@ -19,6 +19,9 @@ export class ReservationFormComponent implements OnChanges {
   @Input() errorMessage: string | null = null;
   @Input() submitting = false;
   @Input() resetTrigger: any;
+  // Identité imposée (RS-04) : quand un ADHERENT connecté réserve pour
+  // lui-même, l'adhérent n'est pas choisi dans le formulaire.
+  @Input() readonlyAdherentId: number | null = null;
   @Output() create = new EventEmitter<ReservationRequest>();
 
   livreId: number | null = null;
@@ -59,11 +62,13 @@ export class ReservationFormComponent implements OnChanges {
   }
 
   get formValide(): boolean {
-    return !!this.livreId && !!this.adherentId;
+    const adherentOk = this.readonlyAdherentId !== null || !!this.adherentId;
+    return !!this.livreId && adherentOk;
   }
 
   onSubmit(): void {
     if (!this.formValide || this.submitting) { return; }
-    this.create.emit({ livreId: this.livreId as number, adherentId: this.adherentId as number });
+    const adherentId = this.readonlyAdherentId ?? this.adherentId;
+    this.create.emit({ livreId: this.livreId as number, adherentId: adherentId as number });
   }
 }

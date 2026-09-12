@@ -1,0 +1,12 @@
+# Contexte de build = racine du projet ; on exclut tout ce qui n'est pas
+# nécessaire au Dockerfile (bibliotheque-backend + bibliotheque-frontend).
+.git
+.github
+screenshots
+keycloak
+node_modules
+**/node_modules
+**/dist
+**/.angular
+*.md
+docker-compose.yml

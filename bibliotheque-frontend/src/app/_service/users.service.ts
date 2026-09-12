@@ -1,16 +1,17 @@
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { NgForm } from '@angular/forms';
 import { Observable } from 'rxjs';
 import { Users } from '../_model/users';
 import { UserAuthService } from './user-auth.service';
+import { apiUrl, keycloakClient, keycloakRealm, keycloakUrl } from './api-config';
 
 @Injectable({
   providedIn: 'root'
 })
 export class UsersService {
 
-  private baseURL = "http://localhost:8080/admin/users";
+  private baseURL = `${apiUrl()}/admin/users`;
   requestHeader = new HttpHeaders(
     { 'No-Auth': 'True' }
   );
@@ -20,24 +21,46 @@ export class UsersService {
     private userAuthService: UserAuthService
   ) { }
 
+  /**
+   * Authentification déléguée à Keycloak (Direct Access Grant, password flow).
+   * Keycloak répond un access_token JWT qui sera présenté au backend dans
+   * l'en-tête Authorization (voir AuthInterceptor).
+   */
   public login(loginData: NgForm) {
-    return this.httpClient.post("http://localhost:8080/authenticate", loginData, {
-      headers: this.requestHeader,
-    });
+    const body = new HttpParams()
+      .set('grant_type', 'password')
+      .set('client_id', keycloakClient())
+      .set('username', loginData.value.username)
+      .set('password', loginData.value.password);
+
+    return this.httpClient.post(
+      `${keycloakUrl()}/realms/${keycloakRealm()}/protocol/openid-connect/token`,
+      body,
+      {
+        headers: new HttpHeaders({
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'No-Auth': 'True'
+        })
+      }
+    );
+  }
+
+  /**
+   * Renvoie l'utilisateur LOCAL de l'application associé au jeton Keycloak
+   * courant (utilisé notamment pour récupérer le userId des emprunts).
+   */
+  public getMe() {
+    return this.httpClient.get(`${apiUrl()}/me`);
   }
 
   public roleMatch(allowedRoles: any): boolean {
-    let isMatch = false;
     const userRoles: any = this.userAuthService.getRoles();
 
     if (userRoles != null && userRoles) {
       for (let i = 0; i < userRoles.length; i++) {
         for (let j = 0; j < allowedRoles.length; j++) {
           if (userRoles[i].roleName === allowedRoles[j]) {
-            isMatch = true;
-            return isMatch;
-          } else {
-            return isMatch;
+            return true;
           }
         }
       }

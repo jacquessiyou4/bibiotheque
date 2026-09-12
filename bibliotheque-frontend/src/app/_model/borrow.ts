@@ -3,6 +3,6 @@ export class Borrow {
     bookId: number;
     userId: number;
     issueDate: Date;
-    returnDate: Date;
+    returnDate: Date | null;
     dueDate: Date;
 }

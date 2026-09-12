@@ -1,15 +1,32 @@
 import { TestBed } from '@angular/core/testing';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { RouterTestingModule } from '@angular/router/testing';
 import { AppComponent } from './app.component';
+import { HeaderComponent } from './header/header.component';
+import { TranslatePipe } from './_i18n/translate.pipe';
+import { TranslationService } from './_service/translation.service';
+import { ThemeService } from './_service/theme.service';
 
 describe('AppComponent', () => {
+  let themeServiceSpy: jasmine.SpyObj<ThemeService>;
+
   beforeEach(async () => {
+    themeServiceSpy = jasmine.createSpyObj('ThemeService', ['init', 'getTheme', 'toggleTheme', 'setTheme']);
+    themeServiceSpy.getTheme.and.returnValue('dark');
+
     await TestBed.configureTestingModule({
       imports: [
-        RouterTestingModule
+        RouterTestingModule,
+        HttpClientTestingModule
       ],
       declarations: [
-        AppComponent
+        AppComponent,
+        HeaderComponent,
+        TranslatePipe
+      ],
+      providers: [
+        { provide: TranslationService, useValue: { translate: (key: string) => key, getLang: () => 'en' } },
+        { provide: ThemeService, useValue: themeServiceSpy },
       ],
     }).compileComponents();
   });
@@ -20,16 +37,22 @@ describe('AppComponent', () => {
     expect(app).toBeTruthy();
   });
 
-  it(`should have as title 'bibliotheque-frontend'`, () => {
+  it(`should have as title 'Library Management System'`, () => {
     const fixture = TestBed.createComponent(AppComponent);
     const app = fixture.componentInstance;
-    expect(app.title).toEqual('bibliotheque-frontend');
+    expect(app.title).toEqual('Library Management System');
   });
 
-  it('should render title', () => {
+  it('should render the header and the router-outlet', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('.content span')?.textContent).toContain('bibliotheque-frontend app is running!');
+    expect(compiled.querySelector('app-header')).toBeTruthy();
+    expect(compiled.querySelector('router-outlet')).toBeTruthy();
+  });
+
+  it('should call themeService.init() on construction', () => {
+    TestBed.createComponent(AppComponent);
+    expect(themeServiceSpy.init).toHaveBeenCalled();
   });
 });

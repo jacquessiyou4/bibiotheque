@@ -12,14 +12,15 @@ export class UpdateUserComponent implements OnInit {
 
   userId: number;
   user: Users = new Users();
-  selectedRole: 'Admin' | 'User' = 'User';
+  selectedRole = 'User';
 
   constructor(private usersService: UsersService,
     private route: ActivatedRoute,
     private router: Router) { }
 
   ngOnInit(): void {
-    this.userId = this.route.snapshot.params['userId'];
+    this.userId = +this.route.snapshot.params['userId'];
+    this.selectedRole = 'User';
     this.usersService.getUserById(this.userId).subscribe(data => {
       this.user = data;
       if (data.role && data.role.length) {

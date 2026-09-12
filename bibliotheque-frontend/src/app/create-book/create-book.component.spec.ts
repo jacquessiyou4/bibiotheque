@@ -1,23 +1,67 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { Router } from '@angular/router';
+import { RouterTestingModule } from '@angular/router/testing';
+import { FormsModule } from '@angular/forms';
+import { of } from 'rxjs';
 
 import { CreateBookComponent } from './create-book.component';
+import { TranslatePipe } from '../_i18n/translate.pipe';
+import { TranslationService } from '../_service/translation.service';
+import { BooksService } from '../_service/books.service';
 
 describe('CreateBookComponent', () => {
   let component: CreateBookComponent;
   let fixture: ComponentFixture<CreateBookComponent>;
+  let booksServiceSpy: jasmine.SpyObj<BooksService>;
+  let router: Router;
 
   beforeEach(async () => {
+    booksServiceSpy = jasmine.createSpyObj('BooksService', ['createBook']);
     await TestBed.configureTestingModule({
-      declarations: [ CreateBookComponent ]
+      imports: [RouterTestingModule, HttpClientTestingModule, FormsModule],
+      declarations: [ CreateBookComponent, TranslatePipe ],
+      providers: [
+        { provide: TranslationService, useValue: { translate: (key: string) => key } },
+        { provide: BooksService, useValue: booksServiceSpy },
+      ]
     })
     .compileComponents();
 
+    booksServiceSpy.createBook.and.returnValue(of({ bookId: 201 }));
+
     fixture = TestBed.createComponent(CreateBookComponent);
     component = fixture.componentInstance;
+    router = TestBed.inject(Router);
     fixture.detectChanges();
   });
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('onSubmit crée le livre saisi puis retourne à la liste', () => {
+    component.book.bookName = 'Nouveau Livre';
+    component.book.noOfCopies = 3;
+    spyOn(router, 'navigate');
+
+    component.onSubmit();
+
+    expect(booksServiceSpy.createBook).toHaveBeenCalledWith(component.book);
+    expect(router.navigate).toHaveBeenCalledWith(['/books']);
+  });
+
+  it('saveBook transmet le modèle complet au service', () => {
+    component.book.bookName = 'Titre';
+    component.book.bookAuthor = 'Auteur';
+    component.book.bookGenre = 'Roman';
+    component.book.noOfCopies = 1;
+
+    component.saveBook();
+
+    const livreEnvoyé = booksServiceSpy.createBook.calls.mostRecent().args[0];
+    expect(livreEnvoyé.bookAuthor).toBe('Auteur');
+    expect(livreEnvoyé.bookGenre).toBe('Roman');
+    expect(livreEnvoyé.noOfCopies).toBe(1);
   });
 });

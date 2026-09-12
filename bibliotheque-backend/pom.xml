@@ -72,7 +72,11 @@
 		<dependency>
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-ui</artifactId>
-			<version>1.5.9</version>
+			<!-- 1.5.13 : dernière de la ligne 1.5.x (compatible Spring Boot 2.4.5 / Java 8).
+			     Livre swagger-ui 4.x dont le swagger-initializer.js est réécrit par
+			     springdoc : /swagger-ui/index.html charge la spec de l'application
+			     directement, sans retomber sur la démo Petstore. -->
+			<version>1.5.13</version>
 		</dependency>
 	</dependencies>
 

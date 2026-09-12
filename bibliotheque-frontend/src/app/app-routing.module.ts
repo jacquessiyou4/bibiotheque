@@ -31,7 +31,7 @@ const routes: Routes = [
   {path: 'forbidden', component: ForbiddenComponent},
   {path: 'borrow-book', component: BorrowBookComponent, canActivate:[AuthGuard], data:{roles:['User']}},
   {path: 'return-book', component: ReturnBookComponent, canActivate:[AuthGuard], data:{roles:['User']}},
-  {path: 'reservations', component: ReservationsComponent, canActivate:[AuthGuard], data:{roles:['Admin']}},
+  {path: 'reservations', component: ReservationsComponent, canActivate:[AuthGuard], data:{roles:['ADHERENT','BIBLIOTHECAIRE']}},
   {path: 'borrow-list', component: BorrowListComponent, canActivate:[AuthGuard], data:{roles:['Admin']}}
 ];
 

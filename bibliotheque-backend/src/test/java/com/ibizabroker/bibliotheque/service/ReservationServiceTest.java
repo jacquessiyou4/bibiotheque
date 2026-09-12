@@ -9,8 +9,10 @@ import com.ibizabroker.bibliotheque.entity.Books;
 import com.ibizabroker.bibliotheque.entity.Reservation;
 import com.ibizabroker.bibliotheque.entity.StatutReservation;
 import com.ibizabroker.bibliotheque.entity.Users;
+import com.ibizabroker.bibliotheque.exceptions.BadRequestException;
 import com.ibizabroker.bibliotheque.exceptions.ConflictException;
 import com.ibizabroker.bibliotheque.exceptions.ForbiddenException;
+import com.ibizabroker.bibliotheque.exceptions.NotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -181,8 +183,6 @@ class ReservationServiceTest {
 
         reservationService.creer(request, false, ADHERENT_CONNECTE);
 
-        // Le user 999 envoyé dans le corps est ignoré : la réservation est
-        // rattachée à l'utilisateur du token (user local 1).
         verify(reservationRepository).save(org.mockito.ArgumentMatchers.argThat(r ->
                 r.getAdherent().getUserId().equals(1)));
         verify(reservationRepository, never()).save(org.mockito.ArgumentMatchers.argThat(r ->
@@ -275,6 +275,234 @@ class ReservationServiceTest {
         reservationService.lister(null, 2, true, "admin");
 
         verify(reservationRepository).findByAdherent_UserId(2);
+    }
+
+    // ------------------------------------------------------------------
+    // Tests supplémentaires : creer avec livreId null → BadRequest
+    // ------------------------------------------------------------------
+    @Test
+    void creer_avecLivreIdNull_lanceBadRequest() {
+        ReservationRequest request = new ReservationRequest();
+        request.setLivreId(null);
+
+        assertThatThrownBy(() -> reservationService.creer(request, false, ADHERENT_CONNECTE))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("livreId est obligatoire");
+    }
+
+    @Test
+    void creer_bibliothecaireAvecAdherentIdNull_lanceBadRequest() {
+        ReservationRequest request = new ReservationRequest();
+        request.setLivreId(101);
+        request.setAdherentId(null);
+
+        assertThatThrownBy(() -> reservationService.creer(request, true, "admin"))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("adherentId est obligatoire");
+    }
+
+    @Test
+    void creer_livreIntrouvable_lanceNotFound() {
+        when(booksRepository.findById(999)).thenReturn(Optional.empty());
+
+        ReservationRequest request = new ReservationRequest();
+        request.setLivreId(999);
+
+        assertThatThrownBy(() -> reservationService.creer(request, false, ADHERENT_CONNECTE))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessageContaining("Livre");
+    }
+
+    @Test
+    void creer_adherentIntrouvable_lanceForbidden() {
+        when(usersRepository.findByUsername(ADHERENT_CONNECTE)).thenReturn(Optional.empty());
+
+        ReservationRequest request = new ReservationRequest();
+        request.setLivreId(101);
+
+        assertThatThrownBy(() -> reservationService.creer(request, false, ADHERENT_CONNECTE))
+                .isInstanceOf(ForbiddenException.class);
+    }
+
+    // ------------------------------------------------------------------
+    // Tests supplémentaires : supprimer
+    // ------------------------------------------------------------------
+    @Test
+    void supprimer_supprimeLaReservation() {
+        Reservation reservation = reservationDe(1);
+        when(reservationRepository.findById(50)).thenReturn(Optional.of(reservation));
+
+        reservationService.supprimer(50);
+
+        verify(reservationRepository).delete(reservation);
+    }
+
+    @Test
+    void supprimer_reservationIntrouvable_lanceNotFound() {
+        when(reservationRepository.findById(999)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> reservationService.supprimer(999))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessageContaining("Réservation avec id 999");
+    }
+
+    // ------------------------------------------------------------------
+    // Tests supplémentaires : listerExpirees
+    // ------------------------------------------------------------------
+    @Test
+    void listerExpirees_renvoieLesReservationsExpirees() {
+        Reservation expiree = reservationDe(1);
+        expiree.setStatut(StatutReservation.EXPIREE);
+        when(reservationRepository.findByStatut(StatutReservation.EXPIREE))
+                .thenReturn(Collections.singletonList(expiree));
+
+        List<ReservationResponse> resultat = reservationService.listerExpirees();
+
+        assertThat(resultat).hasSize(1);
+        assertThat(resultat.get(0).getStatut()).isEqualTo(StatutReservation.EXPIREE);
+    }
+
+    @Test
+    void listerExpirees_renvoieListeVideSiAucuneExpiree() {
+        when(reservationRepository.findByStatut(StatutReservation.EXPIREE))
+                .thenReturn(Collections.emptyList());
+
+        List<ReservationResponse> resultat = reservationService.listerExpirees();
+
+        assertThat(resultat).isEmpty();
+    }
+
+    // ------------------------------------------------------------------
+    // Tests supplémentaires : expirerReservationsDepassees
+    // ------------------------------------------------------------------
+    @Test
+    void expirerReservationsDepassees_passeLesReservationsEnExpiree() {
+        Reservation aExpirer = reservationDe(1);
+        aExpirer.setStatut(StatutReservation.EN_ATTENTE);
+        when(reservationRepository.findByStatutInAndDateExpirationBefore(any(), any()))
+                .thenReturn(Collections.singletonList(aExpirer));
+
+        reservationService.expirerReservationsDepassees();
+
+        verify(reservationRepository).saveAll(any());
+        assertThat(aExpirer.getStatut()).isEqualTo(StatutReservation.EXPIREE);
+    }
+
+    @Test
+    void expirerReservationsDepassees_neRienSiAucuneExpiree() {
+        when(reservationRepository.findByStatutInAndDateExpirationBefore(any(), any()))
+                .thenReturn(Collections.emptyList());
+
+        reservationService.expirerReservationsDepassees();
+
+        verify(reservationRepository).saveAll(Collections.emptyList());
+    }
+
+    // ------------------------------------------------------------------
+    // Tests supplémentaires : lister avec filtres
+    // ------------------------------------------------------------------
+    @Test
+    void lister_avecStatutEtAdherent_rechercheStatutEtAdherent() {
+        reservationService.lister(StatutReservation.EN_ATTENTE, 1, true, "admin");
+
+        verify(reservationRepository).findByStatutAndAdherent_UserId(StatutReservation.EN_ATTENTE, 1);
+    }
+
+    @Test
+    void lister_avecStatutSeul_rechercheParStatut() {
+        reservationService.lister(StatutReservation.DISPONIBLE, null, true, "admin");
+
+        verify(reservationRepository).findByStatut(StatutReservation.DISPONIBLE);
+    }
+
+    @Test
+    void lister_sansFiltre_rechercheTout() {
+        when(reservationRepository.findAll()).thenReturn(Collections.emptyList());
+
+        reservationService.lister(null, null, true, "admin");
+
+        verify(reservationRepository).findAll();
+    }
+
+    // ------------------------------------------------------------------
+    // Tests supplémentaires : annuler une réservation DISPONIBLE
+    // ------------------------------------------------------------------
+    @Test
+    void rg06_annuleLaReservationDisponibleDeSonProprietaire() {
+        Reservation disponible = reservationDe(1);
+        disponible.setStatut(StatutReservation.DISPONIBLE);
+        when(reservationRepository.findById(60)).thenReturn(Optional.of(disponible));
+        when(reservationRepository.save(any(Reservation.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        assertThat(reservationService.annuler(60, false, ADHERENT_CONNECTE).getStatut())
+                .isEqualTo(StatutReservation.ANNULEE);
+    }
+
+    @Test
+    void rg05_refuseLAnnulationDUneReservationAnnulee() {
+        Reservation annulee = reservationDe(1);
+        annulee.setStatut(StatutReservation.ANNULEE);
+        when(reservationRepository.findById(60)).thenReturn(Optional.of(annulee));
+
+        assertThatThrownBy(() -> reservationService.annuler(60, false, ADHERENT_CONNECTE))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("RG-05");
+    }
+
+    // ------------------------------------------------------------------
+    // Tests supplémentaires : reservation introuvable
+    // ------------------------------------------------------------------
+    @Test
+    void consulter_reservationIntrouvable_lanceNotFound() {
+        when(reservationRepository.findById(999)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> reservationService.consulter(999, false, ADHERENT_CONNECTE))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessageContaining("Réservation avec id 999");
+    }
+
+    @Test
+    void annuler_reservationIntrouvable_lanceNotFound() {
+        when(reservationRepository.findById(999)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> reservationService.annuler(999, false, ADHERENT_CONNECTE))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessageContaining("Réservation avec id 999");
+    }
+
+    // ------------------------------------------------------------------
+    // Tests supplémentaires : bibliothecaire ignores le filtre adherentId
+    // ------------------------------------------------------------------
+    @Test
+    void rs05_bibliothecaireSansFiltreListeToutes() {
+        when(reservationRepository.findAll())
+                .thenReturn(Collections.singletonList(reservationDe(1)));
+
+        List<ReservationResponse> resultat = reservationService.lister(null, null, true, "admin");
+
+        verify(reservationRepository).findAll();
+        assertThat(resultat).hasSize(1);
+    }
+
+    // ------------------------------------------------------------------
+    // Tests supplémentaires : creer avec succès
+    // ------------------------------------------------------------------
+    @Test
+    void creer_avecSucces_renvoieStatutEnAttente() {
+        when(reservationRepository.countByAdherent_UserIdAndStatutIn(anyInt(), any())).thenReturn(0L);
+        when(reservationRepository.save(any(Reservation.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        ReservationRequest request = new ReservationRequest();
+        request.setLivreId(101);
+
+        ReservationResponse response = reservationService.creer(request, false, ADHERENT_CONNECTE);
+
+        assertThat(response.getStatut()).isEqualTo(StatutReservation.EN_ATTENTE);
+        assertThat(response.getLivreId()).isEqualTo(101);
+        assertThat(response.getAdherentId()).isEqualTo(1);
+        assertThat(response.getDateExpiration()).isAfter(response.getDateReservation());
     }
 
     // ------------------------------------------------------------------

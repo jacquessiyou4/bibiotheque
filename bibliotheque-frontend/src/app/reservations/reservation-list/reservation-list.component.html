@@ -24,11 +24,18 @@
         <td data-label="Date d'expiration">{{ reservation.dateExpiration | date:'dd/MM/yyyy HH:mm' }}</td>
         <td data-label="Action">
           <button *ngIf="peutAnnuler(reservation)"
-                  class="btn btn-outline-danger btn-sm"
+                  class="btn btn-outline-danger btn-sm me-1"
                   [disabled]="cancellingId === reservation.id"
                   (click)="onAnnuler(reservation)">
             <span *ngIf="cancellingId === reservation.id" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
             {{ 'reservations.cancel' | translate }}
+          </button>
+          <button *ngIf="isBibliothecaire"
+                  class="btn btn-outline-dark btn-sm"
+                  [disabled]="deletingId === reservation.id"
+                  (click)="onSupprimer(reservation)">
+            <span *ngIf="deletingId === reservation.id" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+            {{ 'reservations.delete' | translate }}
           </button>
         </td>
       </tr>

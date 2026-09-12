@@ -31,4 +31,16 @@ export class ReservationService {
   annulerReservation(id: number): Observable<Reservation> {
     return this.httpClient.patch<Reservation>(`${this.baseURL}/${id}/annuler`, {});
   }
+
+  getReservationById(id: number): Observable<Reservation> {
+    return this.httpClient.get<Reservation>(`${this.baseURL}/${id}`);
+  }
+
+  getExpiredReservations(): Observable<Reservation[]> {
+    return this.httpClient.get<Reservation[]>(`${this.baseURL}/expirees`);
+  }
+
+  deleteReservation(id: number): Observable<void> {
+    return this.httpClient.delete<void>(`${this.baseURL}/${id}`);
+  }
 }

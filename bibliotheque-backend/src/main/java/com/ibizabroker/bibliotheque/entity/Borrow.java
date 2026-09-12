@@ -9,7 +9,7 @@ import java.util.Date;
 
 @Data
 @Entity @EntityListeners(AuditingEntityListener.class)
-@Table(name = "Borrow")
+@Table(name = "borrow")
 public class Borrow {
 
     @Id

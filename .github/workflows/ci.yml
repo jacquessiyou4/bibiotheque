@@ -20,8 +20,15 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Build & test
+      - name: Build & test with coverage
         run: cd bibliotheque-backend && mvn -B verify
+
+      - name: Upload backend coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: bibliotheque-backend/target/site/jacoco/
 
       - name: Upload test results
         if: failure()
@@ -49,8 +56,15 @@ jobs:
       - name: Lint
         run: cd bibliotheque-frontend && npx ng lint
 
-      - name: Unit tests
-        run: cd bibliotheque-frontend && npx ng test --no-watch --browsers=ChromeHeadless
+      - name: Unit tests with coverage
+        run: cd bibliotheque-frontend && npx ng test --no-watch --browsers=ChromeHeadlessCodeCoverage
+
+      - name: Upload frontend coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: bibliotheque-frontend/coverage/
 
       - name: Build
         run: cd bibliotheque-frontend && npx ng build --configuration production

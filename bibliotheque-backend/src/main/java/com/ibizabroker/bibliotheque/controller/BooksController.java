@@ -1,9 +1,12 @@
 package com.ibizabroker.bibliotheque.controller;
 
-import com.ibizabroker.bibliotheque.dao.BooksRepository;
 import com.ibizabroker.bibliotheque.entity.Books;
-import com.ibizabroker.bibliotheque.exceptions.NotFoundException;
+import com.ibizabroker.bibliotheque.service.BooksService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,10 +14,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -24,10 +23,10 @@ import java.util.Map;
 @Slf4j
 public class BooksController {
 
-    private final BooksRepository booksRepository;
+    private final BooksService booksService;
 
-    public BooksController(BooksRepository booksRepository) {
-        this.booksRepository = booksRepository;
+    public BooksController(BooksService booksService) {
+        this.booksService = booksService;
     }
 
     @Operation(summary = "Lister les livres (pagination)")
@@ -37,9 +36,7 @@ public class BooksController {
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "bookId") String sortBy) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy));
-        Page<Books> booksPage = booksRepository.findAll(pageable);
-        log.info("Requête GET /admin/books — {} livres en base", booksRepository.count());
-        return booksPage;
+        return booksService.findAll(pageable);
     }
 
     @Operation(summary = "Obtenir un livre par son identifiant")
@@ -47,42 +44,28 @@ public class BooksController {
     @GetMapping("/books/{id}")
     public ResponseEntity<Books> getBookById(@PathVariable Integer id) {
         log.info("Requête GET /admin/books/{}", id);
-        Books book = booksRepository.findById(id).orElseThrow(() -> new NotFoundException("Book with id "+ id +" does not exist."));
-        return ResponseEntity.ok(book);
+        return ResponseEntity.ok(booksService.findById(id));
     }
 
     @Operation(summary = "Créer un nouveau livre")
     @PreAuthorize("hasRole('Admin')")
     @PostMapping("/books")
     public Books createBook(@Valid @RequestBody Books book) {
-        log.info("Requête POST /admin/books — création du livre '{}'", book.getBookName());
-        return booksRepository.save(book);
+        return booksService.create(book);
     }
 
     @Operation(summary = "Modifier un livre existant")
     @PreAuthorize("hasRole('Admin')")
     @PutMapping("/books/{id}")
     public ResponseEntity<Books> updateBook(@PathVariable Integer id, @Valid @RequestBody Books bookDetails) {
-        log.info("Requête PUT /admin/books/{}", id);
-        Books book = booksRepository.findById(id).orElseThrow(() -> new NotFoundException("Book with id "+ id +" does not exist."));
-
-        book.setBookName(bookDetails.getBookName());
-        book.setBookAuthor(bookDetails.getBookAuthor());
-        book.setBookGenre(bookDetails.getBookGenre());
-        book.setNoOfCopies(bookDetails.getNoOfCopies());
-
-        Books updatedBook = booksRepository.save(book);
-        return ResponseEntity.ok(updatedBook);
+        return ResponseEntity.ok(booksService.update(id, bookDetails));
     }
 
     @Operation(summary = "Supprimer un livre")
     @PreAuthorize("hasRole('Admin')")
     @DeleteMapping("/books/{id}")
     public ResponseEntity<Map<String, Boolean>> deleteBook(@PathVariable Integer id) {
-        log.info("Requête DELETE /admin/books/{}", id);
-        Books book = booksRepository.findById(id).orElseThrow(() -> new NotFoundException("Book with id "+ id +" does not exist."));
-
-        booksRepository.delete(book);
+        booksService.delete(id);
         Map<String, Boolean> response = new HashMap<>();
         response.put("deleted", Boolean.TRUE);
         return ResponseEntity.ok(response);

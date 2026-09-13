@@ -5,11 +5,12 @@ import com.ibizabroker.bibliotheque.entity.JwtResponse;
 import com.ibizabroker.bibliotheque.service.JwtService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Authentification")
+@Slf4j
 @RestController
-//@RequestMapping("/")
 public class JwtController {
 
     private final JwtService jwtService;

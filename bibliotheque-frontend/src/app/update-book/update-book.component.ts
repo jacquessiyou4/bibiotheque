@@ -4,6 +4,7 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { Books } from '../_model/books';
 import { BooksService } from '../_service/books.service';
+import { NotificationService } from '../_service/notification.service';
 
 @Component({
   selector: 'app-update-book',
@@ -17,13 +18,15 @@ export class UpdateBookComponent implements OnInit, OnDestroy {
   bookId: number;
   book: Books = new Books();
   constructor(private booksService: BooksService,
+    private notificationService: NotificationService,
     private route: ActivatedRoute,
     private router: Router) { }
 
   ngOnInit(): void {
     this.bookId = this.route.snapshot.params['bookId'];
-    this.booksService.getBookById(this.bookId).pipe(takeUntil(this.destroy$)).subscribe(data => {
-      this.book = data;
+    this.booksService.getBookById(this.bookId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (data) => this.book = data,
+      error: () => this.notificationService.showError('Erreur de chargement du livre')
     })
   }
 
@@ -33,8 +36,9 @@ export class UpdateBookComponent implements OnInit, OnDestroy {
   }
 
   onSubmit() {
-    this.booksService.updateBook(this.bookId, this.book).pipe(takeUntil(this.destroy$)).subscribe( data =>{
-        this.goToBooksList();
+    this.booksService.updateBook(this.bookId, this.book).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => this.goToBooksList(),
+      error: () => this.notificationService.showError('Erreur lors de la mise à jour du livre')
     });
   }
 

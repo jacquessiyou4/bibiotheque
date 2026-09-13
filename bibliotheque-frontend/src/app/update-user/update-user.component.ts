@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { Users } from '../_model/users';
+import { NotificationService } from '../_service/notification.service';
 import { UsersService } from '../_service/users.service';
 
 @Component({
@@ -19,17 +20,21 @@ export class UpdateUserComponent implements OnInit, OnDestroy {
   selectedRole = 'User';
 
   constructor(private usersService: UsersService,
+    private notificationService: NotificationService,
     private route: ActivatedRoute,
     private router: Router) { }
 
   ngOnInit(): void {
     this.userId = +this.route.snapshot.params['userId'];
     this.selectedRole = 'User';
-    this.usersService.getUserById(this.userId).pipe(takeUntil(this.destroy$)).subscribe(data => {
-      this.user = data;
-      if (data.role && data.role.length) {
-        this.selectedRole = data.role[0].roleName;
-      }
+    this.usersService.getUserById(this.userId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (data) => {
+        this.user = data;
+        if (data.role && data.role.length) {
+          this.selectedRole = data.role[0].roleName;
+        }
+      },
+      error: () => this.notificationService.showError('Erreur de chargement de l\'utilisateur')
     })
   }
 
@@ -40,8 +45,9 @@ export class UpdateUserComponent implements OnInit, OnDestroy {
 
   onSubmit() {
     this.user.role = [{ roleName: this.selectedRole }];
-    this.usersService.updateUser(this.userId, this.user).pipe(takeUntil(this.destroy$)).subscribe( data =>{
-        this.goToUsersList();
+    this.usersService.updateUser(this.userId, this.user).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => this.goToUsersList(),
+      error: () => this.notificationService.showError('Erreur lors de la mise à jour de l\'utilisateur')
     });
   }
 

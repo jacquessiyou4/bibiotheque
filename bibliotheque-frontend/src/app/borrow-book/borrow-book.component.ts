@@ -5,6 +5,7 @@ import { Books } from '../_model/books';
 import { Borrow } from '../_model/borrow';
 import { BooksService } from '../_service/books.service';
 import { BorrowService } from '../_service/borrow.service';
+import { NotificationService } from '../_service/notification.service';
 import { UserAuthService } from '../_service/user-auth.service';
 
 @Component({
@@ -22,6 +23,7 @@ export class BorrowBookComponent implements OnInit, OnDestroy {
     private booksService: BooksService,
     private userAuthService: UserAuthService,
     private borrowService: BorrowService,
+    private notificationService: NotificationService,
   ) { }
 
   userId = this.userAuthService.getUserId();
@@ -36,8 +38,9 @@ export class BorrowBookComponent implements OnInit, OnDestroy {
   }
 
   private getBooks() {
-    this.booksService.getBooksList().pipe(takeUntil(this.destroy$)).subscribe(data =>{
-      this.books = data;
+    this.booksService.getBooksList().pipe(takeUntil(this.destroy$)).subscribe({
+      next: (data) => this.books = data,
+      error: () => this.notificationService.showError('Erreur de chargement des livres')
     });
   }
 
@@ -46,6 +49,9 @@ export class BorrowBookComponent implements OnInit, OnDestroy {
   borrowBook(bookId: number) {
     this.borrow.bookId = bookId;
     this.borrow.userId = this.userId;
-    this.borrowService.borrowBook(this.borrow).pipe(takeUntil(this.destroy$)).subscribe();
+    this.borrowService.borrowBook(this.borrow).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => this.notificationService.showSuccess('Emprunt réussi'),
+      error: () => this.notificationService.showError('Erreur lors de l\'emprunt')
+    });
   }
 }

@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { CreateUserRequest } from '../_model/users';
+import { NotificationService } from '../_service/notification.service';
 import { UsersService } from '../_service/users.service';
 
 @Component({
@@ -24,6 +25,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   selectedRole: 'Admin' | 'User' = 'User';
 
   constructor(private usersService: UsersService,
+    private notificationService: NotificationService,
     private router: Router) { }
 
   ngOnInit(): void {
@@ -39,8 +41,9 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   }
 
   saveUser() {
-    this.usersService.createUser(this.user).pipe(takeUntil(this.destroy$)).subscribe(data => {
-      this.goToUsersList();
+    this.usersService.createUser(this.user).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => this.goToUsersList(),
+      error: () => this.notificationService.showError('Erreur lors de la création de l\'utilisateur')
     });
   }
 

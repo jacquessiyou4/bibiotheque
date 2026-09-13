@@ -6,6 +6,7 @@ import { takeUntil } from 'rxjs/operators';
 import { switchMap } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { UserAuthService } from '../_service/user-auth.service';
+import { NotificationService } from '../_service/notification.service';
 import { UsersService } from '../_service/users.service';
 
 @Component({
@@ -21,6 +22,7 @@ export class LoginComponent implements OnInit, OnDestroy {
 
   constructor(private userService: UsersService,
     private userAuthSerivce: UserAuthService,
+    private notificationService: NotificationService,
     private router: Router
   ) { }
 
@@ -57,7 +59,9 @@ export class LoginComponent implements OnInit, OnDestroy {
           })
         );
       })
-    ).subscribe();
+    ).subscribe({
+      error: () => this.notificationService.showError('Identifiants incorrects')
+    });
   }
 
   private navigateAfterLogin(roles: string[]) {

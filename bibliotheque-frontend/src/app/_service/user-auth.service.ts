@@ -11,32 +11,35 @@ export class UserAuthService {
     localStorage.setItem('roles', JSON.stringify(roles));
   }
 
-  public getRoles(): { roleName: string }[] {
-    return JSON.parse(localStorage.getItem('roles')!);
+  public getRoles(): { roleName: string }[] | null {
+    const raw = localStorage.getItem('roles');
+    return raw ? JSON.parse(raw) : null;
   }
 
   public setToken(jwtToken: string) {
     localStorage.setItem('jwtToken', jwtToken);
   }
 
-  public getToken(): string {
-    return localStorage.getItem('jwtToken')!;
+  public getToken(): string | null {
+    return localStorage.getItem('jwtToken');
   }
 
   public setUserId(userId: number) {
     localStorage.setItem('userId', JSON.stringify(userId));
   }
 
-  public getUserId() {
-    return JSON.parse(localStorage.getItem('userId')!);
+  public getUserId(): number | null {
+    const raw = localStorage.getItem('userId');
+    return raw ? JSON.parse(raw) : null;
   }
 
-  public setName(userId: number) {
-    localStorage.setItem('name', JSON.stringify(userId));
+  public setName(name: string) {
+    localStorage.setItem('name', JSON.stringify(name));
   }
 
-  public getName() {
-    return JSON.parse(localStorage.getItem('name')!);
+  public getName(): string | null {
+    const raw = localStorage.getItem('name');
+    return raw ? JSON.parse(raw) : null;
   }
 
   public clear() {

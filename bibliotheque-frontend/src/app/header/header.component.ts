@@ -12,13 +12,17 @@ import { TranslationService } from '../_service/translation.service';
 })
 export class HeaderComponent implements OnInit {
 
+  name: string | null;
+
   constructor(
     private userAuthService: UserAuthService,
     private router: Router,
     public userService: UsersService,
     public themeService: ThemeService,
     public translationService: TranslationService,
-  ) { }
+  ) {
+    this.name = this.userAuthService.getName();
+  }
 
   toggleTheme() {
     this.themeService.toggleTheme();
@@ -28,7 +32,6 @@ export class HeaderComponent implements OnInit {
     this.translationService.toggleLang();
   }
 
-  name = this.userAuthService.getName();
   ngOnInit(): void {
   }
 

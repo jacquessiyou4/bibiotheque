@@ -2,6 +2,7 @@ package com.ibizabroker.bibliotheque.configuration;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.core.Authentication;
@@ -16,19 +17,20 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.UUID;
 
 /**
- * Filtre d'audit de sécurité (bonus « journaliser les tentatives d'accès
- * refusées »). Placé au tout début de la chaîne, il observe le code de statut
- * final de chaque requête : toute réponse 401 ou 403 est journalisée avec la
- * méthode, l'URI et l'utilisateur courant. Complète ainsi les gestionnaires
- * 401/403 quel que soit le niveau (filtre ou @PreAuthorize au niveau méthode).
+ * Filtre d'audit de sécurité qui :
+ * 1. Extrait ou génère un X-Request-ID pour corréler les logs
+ * 2. Journalise les tentatives d'accès refusées (401/403)
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class SecurityAuditFilter implements Filter {
 
     private static final Logger log = LoggerFactory.getLogger(SecurityAuditFilter.class);
+    private static final String REQUEST_ID_HEADER = "X-Request-ID";
+    private static final String MDC_REQUEST_ID = "requestId";
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
@@ -36,12 +38,23 @@ public class SecurityAuditFilter implements Filter {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
 
-        chain.doFilter(request, response);
+        // Extraire ou générer un request ID unique
+        String requestId = httpRequest.getHeader(REQUEST_ID_HEADER);
+        if (requestId == null || requestId.isBlank()) {
+            requestId = UUID.randomUUID().toString();
+        }
+        MDC.put(MDC_REQUEST_ID, requestId);
+        httpResponse.setHeader(REQUEST_ID_HEADER, requestId);
 
-        int status = httpResponse.getStatus();
-        if (status == HttpServletResponse.SC_UNAUTHORIZED || status == HttpServletResponse.SC_FORBIDDEN) {
-            log.warn("[SECURITE-AUDIT] Tentative d'accès refusée - statut={} - méthode={} - URI={} - utilisateur={}",
-                    status, httpRequest.getMethod(), httpRequest.getRequestURI(), utilisateurCourant());
+        try {
+            chain.doFilter(request, response);
+        } finally {
+            int status = httpResponse.getStatus();
+            if (status == HttpServletResponse.SC_UNAUTHORIZED || status == HttpServletResponse.SC_FORBIDDEN) {
+                log.warn("[SECURITE-AUDIT] Tentative d'accès refusée - statut={} - méthode={} - URI={} - utilisateur={}",
+                        status, httpRequest.getMethod(), httpRequest.getRequestURI(), utilisateurCourant());
+            }
+            MDC.remove(MDC_REQUEST_ID);
         }
     }
 

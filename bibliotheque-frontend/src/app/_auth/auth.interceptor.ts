@@ -13,15 +13,21 @@ export class AuthInterceptor implements HttpInterceptor {
   ) {}
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
-    if (req.headers.get('No-Auth') === 'True') {
-      return next.handle(req.clone());
+    let headers: Record<string, string> = {};
+
+    if (req.headers.get('No-Auth') !== 'True') {
+      const token = this.userAuthService.getToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
     }
 
-    const token = this.userAuthService.getToken();
+    // Ajouter un X-Request-ID unique pour corréler les logs frontend → backend
+    headers['X-Request-ID'] = this.generateRequestId();
 
-    req = this.addToken(req, token);
+    const cloned = req.clone({ setHeaders: headers });
 
-    return next.handle(req).pipe(
+    return next.handle(cloned).pipe(
         catchError(
             (err:HttpErrorResponse) => {
                 if(err.status === 401) {
@@ -29,22 +35,17 @@ export class AuthInterceptor implements HttpInterceptor {
                 } else if(err.status === 403) {
                     this.router.navigate(['/forbidden']);
                 }
-                // On repasse l'erreur HTTP telle quelle (statut + corps) : les
-                // écrans qui en ont besoin (ex. réservations) affichent le
-                // message renvoyé par le serveur pour les 400/404/409.
                 return throwError(() => err);
             }
         )
     );
   }
 
-  private addToken(request:HttpRequest<any>, token:string) {
-      return request.clone(
-          {
-              setHeaders: {
-                  Authorization : `Bearer ${token}`
-              }
-          }
-      );
+  private generateRequestId(): string {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
   }
 }

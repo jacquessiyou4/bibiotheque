@@ -1,5 +1,6 @@
 package com.ibizabroker.bibliotheque.controller;
 
+import com.ibizabroker.bibliotheque.dto.BookResponse;
 import com.ibizabroker.bibliotheque.entity.Books;
 import com.ibizabroker.bibliotheque.service.BooksService;
 import lombok.extern.slf4j.Slf4j;
@@ -31,34 +32,34 @@ public class BooksController {
 
     @Operation(summary = "Lister les livres (pagination)")
     @GetMapping("/books")
-    public Page<Books> getAllBooks(
+    public Page<BookResponse> getAllBooks(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "bookId") String sortBy) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy));
-        return booksService.findAll(pageable);
+        return booksService.findAll(pageable).map(this::toBookResponse);
     }
 
     @Operation(summary = "Obtenir un livre par son identifiant")
     @PreAuthorize("hasRole('Admin')")
     @GetMapping("/books/{id}")
-    public ResponseEntity<Books> getBookById(@PathVariable Integer id) {
+    public ResponseEntity<BookResponse> getBookById(@PathVariable Integer id) {
         log.info("Requête GET /admin/books/{}", id);
-        return ResponseEntity.ok(booksService.findById(id));
+        return ResponseEntity.ok(toBookResponse(booksService.findById(id)));
     }
 
     @Operation(summary = "Créer un nouveau livre")
     @PreAuthorize("hasRole('Admin')")
     @PostMapping("/books")
-    public Books createBook(@Valid @RequestBody Books book) {
-        return booksService.create(book);
+    public BookResponse createBook(@Valid @RequestBody Books book) {
+        return toBookResponse(booksService.create(book));
     }
 
     @Operation(summary = "Modifier un livre existant")
     @PreAuthorize("hasRole('Admin')")
     @PutMapping("/books/{id}")
-    public ResponseEntity<Books> updateBook(@PathVariable Integer id, @Valid @RequestBody Books bookDetails) {
-        return ResponseEntity.ok(booksService.update(id, bookDetails));
+    public ResponseEntity<BookResponse> updateBook(@PathVariable Integer id, @Valid @RequestBody Books bookDetails) {
+        return ResponseEntity.ok(toBookResponse(booksService.update(id, bookDetails)));
     }
 
     @Operation(summary = "Supprimer un livre")
@@ -69,5 +70,15 @@ public class BooksController {
         Map<String, Boolean> response = new HashMap<>();
         response.put("deleted", Boolean.TRUE);
         return ResponseEntity.ok(response);
+    }
+
+    private BookResponse toBookResponse(Books book) {
+        return new BookResponse(
+            book.getBookId(),
+            book.getBookName(),
+            book.getBookAuthor(),
+            book.getBookGenre(),
+            book.getNoOfCopies()
+        );
     }
 }

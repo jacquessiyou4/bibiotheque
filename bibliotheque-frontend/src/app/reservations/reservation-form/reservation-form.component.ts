@@ -22,7 +22,7 @@ export class ReservationFormComponent implements OnChanges, OnDestroy {
   @Input() adherents: Users[] = [];
   @Input() errorMessage: string | null = null;
   @Input() submitting = false;
-  @Input() resetTrigger: any;
+  @Input() resetTrigger: boolean | null = null;
   // Identité imposée (RS-04) : quand un ADHERENT connecté réserve pour
   // lui-même, l'adhérent n'est pas choisi dans le formulaire.
   @Input() readonlyAdherentId: number | null = null;

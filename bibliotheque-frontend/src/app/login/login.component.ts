@@ -41,7 +41,7 @@ export class LoginComponent implements OnInit, OnDestroy {
   login(loginForm: NgForm) {
     this.userService.login(loginForm).pipe(
       takeUntil(this.destroy$),
-      switchMap((response: any) => {
+      switchMap((response: { access_token: string }) => {
         const accessToken = response.access_token;
         const payload = this.userAuthSerivce.decodeJwt(accessToken);
         const roles: string[] = (payload.realm_access && payload.realm_access.roles) || [];
@@ -51,7 +51,7 @@ export class LoginComponent implements OnInit, OnDestroy {
         this.userAuthSerivce.setName(payload.name || payload.preferred_username);
 
         return this.userService.getMe().pipe(
-          switchMap((me: any) => {
+          switchMap((me: { userId: number; name: string }) => {
             this.userAuthSerivce.setUserId(me.userId);
             this.userAuthSerivce.setName(me.name);
             this.navigateAfterLogin(roles);

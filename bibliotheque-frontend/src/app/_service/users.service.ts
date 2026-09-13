@@ -53,8 +53,8 @@ export class UsersService {
     return this.httpClient.get(`${apiUrl()}/me`);
   }
 
-  public roleMatch(allowedRoles: any): boolean {
-    const userRoles: any = this.userAuthService.getRoles();
+  public roleMatch(allowedRoles: string[]): boolean {
+    const userRoles = this.userAuthService.getRoles();
 
     if (userRoles != null && userRoles) {
       for (let i = 0; i < userRoles.length; i++) {

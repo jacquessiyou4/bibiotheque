@@ -14,7 +14,7 @@ export class ReservationService {
   constructor(private httpClient: HttpClient) { }
 
   getReservations(statut?: StatutReservation, adherentId?: number): Observable<Reservation[]> {
-    let params: any = {};
+    let params: { statut?: string; adherentId?: number } = {};
     if (statut) { params.statut = statut; }
     if (adherentId) { params.adherentId = adherentId; }
     return this.httpClient.get<Reservation[]>(this.baseURL, { params });

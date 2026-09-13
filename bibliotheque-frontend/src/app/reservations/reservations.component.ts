@@ -61,7 +61,7 @@ export class ReservationsComponent implements OnInit, OnDestroy {
    * adhérent ; un ADHERENT uniquement pour lui-même (RS-04).
    */
   get estBibliothecaire(): boolean {
-    const roles: any[] = this.userAuthService.getRoles() || [];
+    const roles = this.userAuthService.getRoles() || [];
     return roles.some((r) => r.roleName === 'BIBLIOTHECAIRE');
   }
 
@@ -119,7 +119,7 @@ export class ReservationsComponent implements OnInit, OnDestroy {
 
     this.usersService.getUsersList().pipe(takeUntil(this.destroy$)).subscribe({
       next: (users) => this.adherents = (users || []).filter(
-        (u: any) => u.role && u.role.some((r: any) => r.roleName === 'User')),
+        (u) => u.role && u.role.some((r) => r.roleName === 'User')),
       error: () => this.adherents = []
     });
   }

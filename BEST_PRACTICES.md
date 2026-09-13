@@ -1089,34 +1089,144 @@ de tables sont aussi incohérents (`Books` vs `reservation`).
 |---|---|---|---|
 | 🔴 | ~~Supprimer `console.log` frontend~~ | Faible | Sécurité |
 | 🔴 | ~~Ajouter HTTPS (reverse proxy)~~ | Moyen | Sécurité |
-| 🔴 | Réactiver `@PreAuthorize` sur addUser | Faible | Sécurité |
-| 🔴 | Sécuriser BorrowController | Faible | Sécurité |
-| 🔴 | Externaliser clé JWT | Faible | Sécurité |
-| 🔴 | Remplacer `Optional.get()` | Faible | Fiabilité |
-| 🔴 | Supprimer credentials en dur | Faible | Sécurité |
+| 🔴 | ~~Réactiver `@PreAuthorize` sur addUser~~ | Faible | Sécurité |
+| 🔴 | ~~Sécuriser BorrowController~~ | Faible | Sécurité |
+| 🔴 | ~~Externaliser clé JWT~~ | Faible | Sécurité |
+| 🔴 | ~~Remplacer `Optional.get()`~~ | Faible | Fiabilité |
+| 🔴 | ~~Supprimer credentials en dur~~ | Faible | Sécurité |
+| 🔴 | ~~Supprimer valeur par défaut JWT~~ | Faible | Sécurité |
+| 🔴 | ~~Corriger `getUserData()` async~~ | Faible | Fiabilité |
 | 🟠 | ~~ErrorHandler global Angular~~ | Moyen | UX / Maintenance |
 | 🟠 | ~~DTOs pour l'API backend~~ | Moyen | Sécurité / API |
 | 🟠 | ~~Pagination~~ | Moyen | Performance |
 | 🟠 | ~~Couche Service pour Books/Borrow~~ | Moyen | Architecture |
 | 🟠 | ~~Injection par constructeur~~ | Moyen | Testabilité |
 | 🟠 | ~~`@ControllerAdvice` global~~ | Moyen | Maintenance |
-| 🟠 | Supprimer `@CrossOrigin` en dur | Faible | Cohérence |
+| 🟠 | ~~Supprimer `@CrossOrigin` en dur~~ | Faible | Cohérence |
 | 🟠 | ~~Nettoyage RxJS subscriptions~~ | Moyen | Fiabilité |
-| 🟠 | Gestionnaires d'erreur subscriptions | Faible | Robustesse |
+| 🟠 | ~~Gestionnaires d'erreur subscriptions~~ | Faible | Robustesse |
+| 🟠 | ~~Ajouter `@Valid` sur BorrowController~~ | Faible | Robustesse |
+| 🟠 | ~~Ajouter validation sur entité Borrow~~ | Faible | Robustesse |
+| 🟠 | ~~Limiter CORS en production~~ | Faible | Sécurité |
+| 🟠 | ~~`cap_drop` + `no-new-privileges` Docker~~ | Faible | Sécurité |
+| 🟠 | ~~Tests unitaires BooksService/BorrowService~~ | Moyen | Qualité |
 | 🟡 | ~~Validation des entrées (`@Valid`)~~ | Faible | Robustesse |
 | 🟡 | ~~`switchMap` au lieu de `subscribe` imbriqués~~ | Faible | Lisibilité |
-| 🟡 | `restart` policies Docker | Faible | Disponibilité |
-| 🟡 | Limites de ressources containers | Faible | Stabilité |
-| 🟡 | Healthcheck backend | Faible | Disponibilité |
-| 🟡 | Validation côté client Angular | Faible | UX |
-| 🟡 | Headers sécurité nginx | Faible | Sécurité |
-| 🟡 | Désactiver `show-sql` | Faible | Sécurité |
-| 🟡 | Remplacer `ddl-auto` par Flyway | Moyen | Fiabilité |
+| 🟡 | ~~`restart` policies Docker~~ | Faible | Disponibilité |
+| 🟡 | ~~Limites de ressources containers~~ | Faible | Stabilité |
+| 🟡 | ~~Healthcheck backend~~ | Faible | Disponibilité |
+| 🟡 | ~~Validation côté client Angular~~ | Faible | UX |
+| 🟡 | ~~Headers sécurité nginx~~ | Faible | Sécurité |
+| 🟡 | ~~Désactiver `show-sql`~~ | Faible | Sécurité |
+| 🟡 | ~~Remplacer `ddl-auto` par Flyway~~ | Moyen | Fiabilité |
+| 🟡 | ~~Corriger raw type `Set` dans JwtService~~ | Faible | Type safety |
+| 🟡 | ~~Masquer stack traces en production~~ | Faible | Sécurité |
+| 🟡 | ~~Scope `provided` pour devtools~~ | Faible | Sécurité |
+| 🟡 | ~~Types `any` → types stricts~~ | Moyen | Type safety |
+| 🟡 | ~~Assertions non-null localStorage~~ | Faible | Fiabilité |
+| 🟡 | ~~`.dockerignore` restrictif~~ | Faible | Sécurité |
+| 🟡 | ~~Avertissement .env production~~ | Faible | Sécurité |
+| 🟡 | ~~Activer Actuator métriques~~ | Faible | Observabilité |
+| 🟡 | ~~DTO pour `GET /admin/books` paginé~~ | Moyen | Sécurité |
 | 🟢 | ~~Pipeline CI/CD~~ | Moyen | Fiabilité |
 | 🟢 | ~~Swagger annotations~~ | Faible | Documentation |
 | 🟢 | ~~Tests unitaires contrôleurs~~ | Moyen | Qualité |
 | 🟢 | ~~Couverture de code CI~~ | Moyen | Qualité |
 | 🟢 | ~~OnPush change detection~~ | Faible | Performance |
+| 🟢 | ~~Image Alpine au lieu de Jammy~~ | Faible | Taille image |
+| 🟢 | ~~HEALTHCHECK dans Dockerfile frontend~~ | Faible | Portabilité |
+| 🟢 | ~~Supprimer `@EntityListeners` inutile~~ | Faible | Performance |
+| 🟢 | ~~Logging dans scheduled task~~ | Faible | Observabilité |
+| 🟢 | ~~Fix `as any` dates~~ | Faible | Type safety |
+| 🟢 | ~~Initialisation champ header~~ | Faible | Fiabilité |
+
+---
+
+## Nouvelles recommandations (45-72)
+
+### 45. Supprimer la valeur par défaut du secret JWT
+**Statut :** ~~Fait~~ — `JwtUtil.java` utilise maintenant `@Value("${jwt.secret}")` sans fallback.
+
+### 46. Ajouter `@Valid` sur BorrowController
+**Statut :** ~~Fait~~ — `@Valid @RequestBody` ajouté sur `borrowBook()` et `returnBook()`.
+
+### 47. Ajouter validation sur entité Borrow
+**Statut :** ~~Fait~~ — `@NotNull` ajouté sur `bookId` et `userId`. `@EntityListeners` inutile supprimé.
+
+### 48. Corriger raw type dans JwtService
+**Statut :** ~~Fait~~ — `Set` → `Set<SimpleGrantedAuthority>` dans `getAuthority()`.
+
+### 49. Limiter CORS en production
+**Statut :** ~~Fait~~ — `allowedOriginPatterns("*")` remplacé par `${CORS_ALLOWED_ORIGINS}`.
+
+### 50. DTO pour GET /admin/books paginé
+**Statut :** En attente.
+
+### 51. Supprimer `@EntityListeners` inutile
+**Statut :** ~~Fait~~ — Supprimé de l'entité `Borrow`.
+
+### 52. `fixedDelay` au lieu de `fixedRate`
+**Statut :** ~~Fait~~ — `@Scheduled(fixedDelayString = "60000")`.
+
+### 53. Logging dans scheduled task
+**Statut :** ~~Fait~~ — `log.info("Expiration de {} réservation(s) dépassées")`.
+
+### 54. Masquer stack traces en production
+**Statut :** ~~Fait~~ — `log.error("Erreur inattendue: {}", ex.getMessage())`.
+
+### 55. Scope `provided` pour devtools
+**Statut :** ~~Fait~~ — `<scope>provided</scope>` dans `pom.xml`.
+
+### 56. Error handlers manquants
+**Statut :** ~~Fait~~ — 17 subscriptions corrigées dans 10 composants.
+
+### 57. Corriger `getUserData()` async
+**Statut :** ~~Fait~~ — Retourne `''` si pas encore chargé, charge en arrière-plan.
+
+### 58. Types `any` → types stricts
+**Statut :** En attente.
+
+### 59. Assertions non-null localStorage
+**Statut :** ~~Fait~~ — Types de retour `| null` avec vérification explicite.
+
+### 60. Fix `as any` dates
+**Statut :** ~~Fait~~ — `new Date(b.issueDate).toLocaleDateString()`.
+
+### 61. Types dédiés pour env vars
+**Statut :** En attente (l'implémentation actuelle avec `declare global` est acceptable).
+
+### 62. Initialisation champ header
+**Statut :** ~~Fait~~ — `name` initialisé dans le constructeur.
+
+### 63. Image Alpine au lieu de Jammy
+**Statut :** ~~Fait~~ — `eclipse-temurin:8-jre-alpine`.
+
+### 64. `.dockerignore` restrictif
+**Statut :** ~~Fait~~ — Ajout de `.angular`, `.cache`, `coverage`.
+
+### 65. HEALTHCHECK dans Dockerfile frontend
+**Statut :** ~~Fait~~ — `HEALTHCHECK --interval=10s --timeout=5s --retries=5`.
+
+### 66. `cap_drop` + `no-new-privileges`
+**Statut :** ~~Fait~~ — Ajouté à tous les services Docker.
+
+### 67. Avertissement .env production
+**Statut :** ~~Fait~~ — En-tête d'avertissement ajouté à `.env.example`.
+
+### 68. Activer Actuator métriques
+**Statut :** ~~Fait~~ — `management.endpoints.web.exposure.include=health,info,metrics,prometheus`.
+
+### 69. Header corrélation requestId
+**Statut :** En attente.
+
+### 70. Tests unitaires BooksService/BorrowService
+**Statut :** En attente.
+
+### 71. Tests Angular réels
+**Statut :** En attente.
+
+### 72. Test flow emprunt→retour complet
+**Statut :** En attente.
 
 ---
 

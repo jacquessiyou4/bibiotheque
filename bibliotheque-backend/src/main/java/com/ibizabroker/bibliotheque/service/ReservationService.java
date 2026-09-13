@@ -134,10 +134,13 @@ public class ReservationService {
                 .collect(Collectors.toList());
     }
 
-    @Scheduled(fixedRate = 60000)
+    @Scheduled(fixedDelayString = "60000")
     public void expirerReservationsDepassees() {
         List<Reservation> aExpirer = reservationRepository
                 .findByStatutInAndDateExpirationBefore(STATUTS_ACTIFS, LocalDateTime.now());
+        if (!aExpirer.isEmpty()) {
+            log.info("Expiration de {} réservation(s) dépassées", aExpirer.size());
+        }
         aExpirer.forEach(r -> r.setStatut(StatutReservation.EXPIREE));
         reservationRepository.saveAll(aExpirer);
     }

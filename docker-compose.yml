@@ -55,7 +55,7 @@ services:
       APP_KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/bibliotheque/protocol/openid-connect/certs
       APP_KEYCLOAK_ISSUER_LOCAL: http://localhost:${KEYCLOAK_PORT:-8081}/realms/bibliotheque
       APP_KEYCLOAK_ISSUER_INTERNAL: http://keycloak:8080/realms/bibliotheque
-      JWT_SECRET: ${JWT_SECRET:-learn_programming_yourself}
+      JWT_SECRET: ${JWT_SECRET}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     depends_on:

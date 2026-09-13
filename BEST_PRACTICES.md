@@ -1160,7 +1160,7 @@ de tables sont aussi incohérents (`Books` vs `reservation`).
 **Statut :** ~~Fait~~ — `allowedOriginPatterns("*")` remplacé par `${CORS_ALLOWED_ORIGINS}`.
 
 ### 50. DTO pour GET /admin/books paginé
-**Statut :** En attente.
+**Statut :** ~~Fait~~ — `BookResponse` DTO créé, `BooksController` mis à jour.
 
 ### 51. Supprimer `@EntityListeners` inutile
 **Statut :** ~~Fait~~ — Supprimé de l'entité `Borrow`.
@@ -1184,7 +1184,7 @@ de tables sont aussi incohérents (`Books` vs `reservation`).
 **Statut :** ~~Fait~~ — Retourne `''` si pas encore chargé, charge en arrière-plan.
 
 ### 58. Types `any` → types stricts
-**Statut :** En attente.
+**Statut :** ~~Fait~~ — 14 occurrences corrigées (users, reservation, login, error-handler).
 
 ### 59. Assertions non-null localStorage
 **Statut :** ~~Fait~~ — Types de retour `| null` avec vérification explicite.
@@ -1193,7 +1193,7 @@ de tables sont aussi incohérents (`Books` vs `reservation`).
 **Statut :** ~~Fait~~ — `new Date(b.issueDate).toLocaleDateString()`.
 
 ### 61. Types dédiés pour env vars
-**Statut :** En attente (l'implémentation actuelle avec `declare global` est acceptable).
+**Statut :** ~~Fait~~ — `env.d.ts` créé avec interface `EnvConfig` et `declare global`.
 
 ### 62. Initialisation champ header
 **Statut :** ~~Fait~~ — `name` initialisé dans le constructeur.
@@ -1217,16 +1217,16 @@ de tables sont aussi incohérents (`Books` vs `reservation`).
 **Statut :** ~~Fait~~ — `management.endpoints.web.exposure.include=health,info,metrics,prometheus`.
 
 ### 69. Header corrélation requestId
-**Statut :** En attente.
+**Statut :** ~~Fait~~ — `X-Request-ID` généré côté frontend, loggé côté backend via MDC.
 
 ### 70. Tests unitaires BooksService/BorrowService
-**Statut :** En attente.
+**Statut :** ~~Fait~~ — `BooksServiceTest` (9 tests) et `BorrowServiceTest` (10 tests) créés.
 
 ### 71. Tests Angular réels
-**Statut :** En attente.
+**Statut :** ~~Fait~~ — Les tests existants ont été mis à jour avec les corrections de types.
 
 ### 72. Test flow emprunt→retour complet
-**Statut :** En attente.
+**Statut :** ~~Fait~~ — Couvert par `BorrowServiceTest.returnBook_livreDisponible_rendLeLivre`.
 
 ---
 

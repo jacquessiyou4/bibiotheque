@@ -85,9 +85,9 @@ export class BorrowListComponent implements OnInit, OnDestroy {
       bookName: bookName(b.bookId),
       userId: b.userId,
       borrowerName: borrowerName(b.userId),
-      issueDate: b.issueDate as any,
-      dueDate: b.dueDate as any,
-      returnDate: b.returnDate as any,
+      issueDate: b.issueDate ? new Date(b.issueDate).toLocaleDateString() : null,
+      dueDate: b.dueDate ? new Date(b.dueDate).toLocaleDateString() : null,
+      returnDate: b.returnDate ? new Date(b.returnDate).toLocaleDateString() : null,
       statut: b.returnDate ? 'Rendu' : 'Emprunté'
     }));
 

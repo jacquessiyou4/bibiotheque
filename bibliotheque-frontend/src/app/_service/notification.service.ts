@@ -8,22 +8,18 @@ export class NotificationService {
   constructor() { }
 
   showSuccess(message: string): void {
-    // In a real app, use a toast library like ngx-toastr
-    console.log('[SUCCESS]', message);
+    // TODO: Replace with a toast library (e.g. ngx-toastr)
   }
 
   showError(message: string): void {
-    // In a real app, use a toast library like ngx-toastr
-    console.error('[ERROR]', message);
+    // TODO: Replace with a toast library (e.g. ngx-toastr)
   }
 
   showWarning(message: string): void {
-    // In a real app, use a toast library like ngx-toastr
-    console.warn('[WARNING]', message);
+    // TODO: Replace with a toast library (e.g. ngx-toastr)
   }
 
   showInfo(message: string): void {
-    // In a real app, use a toast library like ngx-toastr
-    console.log('[INFO]', message);
+    // TODO: Replace with a toast library (e.g. ngx-toastr)
   }
 }

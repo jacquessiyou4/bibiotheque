@@ -37,7 +37,7 @@ COPY bibliotheque-backend/src ./src
 RUN mvn -B clean package -DskipTests
 
 # --- Étape 2 : exécution --------------------------------------------------
-FROM eclipse-temurin:8-jre-jammy
+FROM eclipse-temurin:8-jre-alpine
 WORKDIR /app
 
 COPY --from=build /app/target/*.jar app.jar

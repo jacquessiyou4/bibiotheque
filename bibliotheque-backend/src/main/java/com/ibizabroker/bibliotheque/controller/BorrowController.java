@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
 import java.util.List;
 
 @Slf4j
@@ -21,7 +22,7 @@ public class BorrowController {
 
     @PreAuthorize("hasAnyRole('User', 'Admin', 'ADHERENT', 'BIBLIOTHECAIRE')")
     @PostMapping
-    public String borrowBook(@RequestBody Borrow borrow) {
+    public String borrowBook(@Valid @RequestBody Borrow borrow) {
         return borrowService.borrowBook(borrow);
     }
 
@@ -33,7 +34,7 @@ public class BorrowController {
 
     @PreAuthorize("hasAnyRole('User', 'Admin', 'ADHERENT', 'BIBLIOTHECAIRE')")
     @PutMapping
-    public Borrow returnBook(@RequestBody Borrow borrow) {
+    public Borrow returnBook(@Valid @RequestBody Borrow borrow) {
         return borrowService.returnBook(borrow);
     }
 

@@ -2,20 +2,24 @@ package com.ibizabroker.bibliotheque.entity;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Data;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import javax.persistence.*;
+import javax.validation.constraints.NotNull;
 import java.util.Date;
 
 @Data
-@Entity @EntityListeners(AuditingEntityListener.class)
+@Entity
 @Table(name = "borrow")
 public class Borrow {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Integer borrowId;
+
+    @NotNull(message = "bookId est obligatoire")
     Integer bookId;
+
+    @NotNull(message = "userId est obligatoire")
     Integer userId;
 
     @Temporal(TemporalType.TIMESTAMP)

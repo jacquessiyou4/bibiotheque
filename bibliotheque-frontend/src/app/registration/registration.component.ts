@@ -1,6 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
-import { Users } from '../_model/users';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
+import { CreateUserRequest } from '../_model/users';
+import { NotificationService } from '../_service/notification.service';
 import { UsersService } from '../_service/users.service';
 
 @Component({
@@ -8,21 +11,40 @@ import { UsersService } from '../_service/users.service';
   templateUrl: './registration.component.html',
   styleUrls: ['./registration.component.css']
 })
-export class RegistrationComponent implements OnInit {
+export class RegistrationComponent implements OnInit, OnDestroy {
 
-  user: Users = new Users();
+  private destroy$ = new Subject<void>();
+
+  user: CreateUserRequest = {
+    username: '',
+    name: '',
+    password: '',
+    roles: []
+  };
+  showPassword = false;
+  selectedRole: 'Admin' | 'User' = 'User';
+
   constructor(private usersService: UsersService,
+    private notificationService: NotificationService,
     private router: Router) { }
 
   ngOnInit(): void {
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  togglePasswordVisibility() {
+    this.showPassword = !this.showPassword;
+  }
+
   saveUser() {
-    this.usersService.createUser(this.user).subscribe(data => {
-      console.log(data);
-      this.goToUsersList();
-    },
-    error => console.log(error));
+    this.usersService.createUser(this.user).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => this.goToUsersList(),
+      error: () => this.notificationService.showError('Erreur lors de la création de l\'utilisateur')
+    });
   }
 
   goToUsersList() {
@@ -30,7 +52,7 @@ export class RegistrationComponent implements OnInit {
   }
 
   onSubmit() {
-    console.log(this.user);
+    this.user.roles = [this.selectedRole];
     this.saveUser();
   }
 

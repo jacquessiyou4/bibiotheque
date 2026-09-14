@@ -1,8 +1,11 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { Books } from '../_model/books';
 import { Borrow } from '../_model/borrow';
 import { BooksService } from '../_service/books.service';
 import { BorrowService } from '../_service/borrow.service';
+import { NotificationService } from '../_service/notification.service';
 import { UserAuthService } from '../_service/user-auth.service';
 
 @Component({
@@ -10,7 +13,9 @@ import { UserAuthService } from '../_service/user-auth.service';
   templateUrl: './borrow-book.component.html',
   styleUrls: ['./borrow-book.component.css']
 })
-export class BorrowBookComponent implements OnInit {
+export class BorrowBookComponent implements OnInit, OnDestroy {
+
+  private destroy$ = new Subject<void>();
 
   books: Books[];
 
@@ -18,6 +23,7 @@ export class BorrowBookComponent implements OnInit {
     private booksService: BooksService,
     private userAuthService: UserAuthService,
     private borrowService: BorrowService,
+    private notificationService: NotificationService,
   ) { }
 
   userId = this.userAuthService.getUserId();
@@ -26,9 +32,15 @@ export class BorrowBookComponent implements OnInit {
     this.getBooks();
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   private getBooks() {
-    this.booksService.getBooksList().subscribe(data =>{
-      this.books = data;
+    this.booksService.getBooksList().pipe(takeUntil(this.destroy$)).subscribe({
+      next: (data) => this.books = data,
+      error: () => this.notificationService.showError('Erreur de chargement des livres')
     });
   }
 
@@ -36,11 +48,16 @@ export class BorrowBookComponent implements OnInit {
 
   borrowBook(bookId: number) {
     this.borrow.bookId = bookId;
-    this.borrow.userId = this.userId;
-    console.log(this.borrow);
-    this.borrowService.borrowBook(this.borrow).subscribe(data => {
-      console.log(data);
-    },
-    error => console.log(error));
+    if (this.userId !== null) {
+      this.borrow.userId = this.userId;
+    }
+    this.borrowService.borrowBook(this.borrow).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => {
+        this.notificationService.showSuccess('Emprunt réussi');
+        // Le nombre d'exemplaires affiché a changé.
+        this.getBooks();
+      },
+      error: (err) => this.notificationService.showError(err?.error?.message || 'Erreur lors de l\'emprunt')
+    });
   }
 }

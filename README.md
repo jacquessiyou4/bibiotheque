@@ -205,6 +205,15 @@ port 8080 : les deux doivent tourner en même temps.
 
 ## 5. Créer le premier compte
 
+> **Mise à jour (Docker + Keycloak + Flyway).** Avec `docker compose up`, cette
+> étape est automatique : l'authentification passe par Keycloak
+> (`keycloak/realm-bibliotheque.json`) et la migration
+> `V2__seed_comptes_et_catalogue.sql` crée les utilisateurs locaux
+> correspondants et un petit catalogue. Comptes de test :
+> **admin / admin123** (Admin, BIBLIOTHECAIRE), **A1 / A1123** et
+> **A2 / A2123** (User, ADHERENT). La procédure SQL ci-dessous ne concerne que
+> l'ancienne version MySQL du projet.
+
 Il n'y a aucun utilisateur en base, et `POST /admin/users` exige déjà un token.
 Le premier administrateur s'insère donc directement en SQL, **après** le premier
 démarrage du backend — sinon les tables n'existent pas encore.

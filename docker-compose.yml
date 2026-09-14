@@ -1,0 +1,250 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: bibliotheque-db
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # L'entrypoint Postgres démarre en root, corrige les droits du volume
+    # puis bascule sur l'utilisateur postgres : sans ces capacités il échoue
+    # (« failed switching to 'postgres': operation not permitted »).
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-bibliotheque}
+      POSTGRES_USER: ${POSTGRES_USER:-bibliotheque}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bibliotheque}
+    ports:
+      - "${POSTGRES_PORT:-5435}:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      # pg_isready répond dès que Postgres ACCEPTE des connexions, pas
+      # seulement quand le conteneur a démarré : c'est la différence avec
+      # un simple `depends_on` (voir README / SEANCE-1, point 2).
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bibliotheque} -d ${POSTGRES_DB:-bibliotheque}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      # Contexte = racine du projet : le Dockerfile assemble le backend ET
+      # le build Angular (bibliotheque-frontend) en un seul jar.
+      context: .
+      dockerfile: bibliotheque-backend/Dockerfile
+    container_name: bibliotheque-backend
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    environment:
+      # Ces variables surchargent application.properties (qu'on ne modifie
+      # pas) grâce au "relaxed binding" de Spring Boot : chaque propriété
+      # spring.xxx.yyy a son équivalent SPRING_XXX_YYY en env var.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-bibliotheque}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-bibliotheque}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-bibliotheque}
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
+      # --- Intégration Keycloak (OAuth2 / OpenID Connect) ---
+      # Le backend (resource server) récupère les clés publiques de Keycloak
+      # en interne via le réseau Docker (keycloak:8080), mais les jetons émis
+      # pour le NAVIGATEUR portent l'issuer local (http://localhost:8081/…) :
+      # l'issuer interne ET l'issuer local sont donc acceptés.
+      APP_KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/bibliotheque/protocol/openid-connect/certs
+      APP_KEYCLOAK_ISSUER_LOCAL: http://localhost:${KEYCLOAK_PORT:-8081}/realms/bibliotheque
+      APP_KEYCLOAK_ISSUER_INTERNAL: http://keycloak:8080/realms/bibliotheque
+      JWT_SECRET: ${JWT_SECRET}
+      # Origines autorisées en CORS (le frontend nginx est servi sur 4200).
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:4200}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      # L'image eclipse-temurin:8-jre-alpine fournit wget (busybox) mais pas curl.
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # --- Service frontend séparé (nginx) --------------------------------------
+  # Le frontend Angular est servi par nginx sur le port 4200.
+  # L'URL de l'API et de Keycloak sont injectées au démarrage via
+  # docker-entrypoint.d/40-env-config.sh (assets/env.js).
+  # Le navigateur (pas le conteneur) accède aux services via localhost.
+  frontend:
+    build:
+      context: ./bibliotheque-frontend
+    container_name: bibliotheque-frontend
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # Le maître nginx (root) prépare /var/cache/nginx puis lance ses workers
+    # sous l'utilisateur nginx : sans ces capacités il s'arrête sur
+    # « chown("/var/cache/nginx/client_temp", 101) failed ».
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - NET_BIND_SERVICE
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+    environment:
+      API_URL: http://localhost:${BACKEND_PORT:-8080}
+      KEYCLOAK_URL: http://localhost:${KEYCLOAK_PORT:-8081}
+    ports:
+      - "${FRONTEND_PORT:-4200}:80"
+    depends_on:
+      - backend
+    healthcheck:
+      # 127.0.0.1 et non localhost : dans l'image alpine, localhost se résout
+      # d'abord en ::1 alors que nginx n'écoute qu'en IPv4 (conteneur « unhealthy »).
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:80 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  keycloak-db:
+    image: postgres:16-alpine
+    container_name: bibliotheque-keycloak-db
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # Mêmes capacités minimales que le service db (voir ci-dessus).
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+    environment:
+      POSTGRES_DB: ${KEYCLOAK_DB_NAME:-keycloak}
+      POSTGRES_USER: ${KEYCLOAK_DB_USER:-keycloak}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak}
+    volumes:
+      - keycloak_db_data:/var/lib/postgresql/data
+    healthcheck:
+      # Même pattern que le service db : pg_isready répond dès que la base
+      # accepte les connexions, pas seulement quand le conteneur a démarré.
+      test: ["CMD-SHELL", "pg_isready -U ${KEYCLOAK_DB_USER:-keycloak} -d ${KEYCLOAK_DB_NAME:-keycloak}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.5
+    container_name: bibliotheque-keycloak
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    # start-dev : mode développement (H2 remplacé par la base ci-dessous,
+    # HTTPS désactivé, logs verbeux). --import-realm charge le realm fourni.
+    command: ["start-dev", "--import-realm"]
+    environment:
+      # Compte admin de bootstrap, créé au PREMIER démarrage uniquement.
+      # Keycloak 24 lit KEYCLOAK_ADMIN / KEYCLOAK_ADMIN_PASSWORD ; les variables
+      # KC_BOOTSTRAP_ADMIN_* n'existent qu'à partir de Keycloak 26.
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USER:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin123}
+      # Keycloak stocke son propre état (realms, clients, users) dans une
+      # base PostgreSQL dédiée, distincte de celle de l'application.
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/${KEYCLOAK_DB_NAME:-keycloak}
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USER:-keycloak}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak}
+      # (En dev mode le port de gestion n'est pas actif : le healthcheck
+      # ci-dessous passe par le port HTTP principal 8080.)
+      KC_MANAGEMENT_PORT: 9000
+      # Les endpoints /health, /health/ready, /health/live ne sont PAS
+      # exposés par défaut : il faut les activer explicitement.
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      # 8080 du conteneur est publié sur 8081 de la machine pour ne pas
+      # entrer en conflit avec le backend (8080).
+      - "${KEYCLOAK_PORT:-8081}:8080"
+    volumes:
+      # Realm "bibliotheque" importé automatiquement au premier démarrage :
+      # voit ./keycloak/realm-bibliotheque.json
+      - ./keycloak/realm-bibliotheque.json:/opt/keycloak/data/import/realm-bibliotheque.json:ro
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    healthcheck:
+      # En mode dev (start-dev), /health/ready est servi sur le port HTTP
+      # principal (8080), PAS sur le port de gestion 9000. On fait un
+      # GET HTTP brut via /dev/tcp (l'image n'embarque ni curl ni wget).
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080; echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; cat <&3 | grep -q '200 OK'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 45s
+  # --- Reverse proxy HTTPS (optionnel) --------------------------------------
+  # Caddy termine le TLS automatiquement (certificats Let's Encrypt
+  # en prod, certificats auto-signés en dev local). Pour activer :
+  #   1. Utiliser le profile https : docker compose --profile https up
+  #   2. Modifier les ports des services backend/frontend pour ne plus
+  #      les exposer directement (supprimer les lignes `ports:`)
+  #   3. Rediriger le trafic via Caddy sur les ports 80/443
+  #
+  caddy:
+    image: caddy:2-alpine
+    container_name: bibliotheque-caddy
+    restart: unless-stopped
+    profiles: ["https"]
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+      - frontend
+      - keycloak
+
+volumes:
+  db_data:
+  keycloak_db_data:
+  caddy_data:
+  caddy_config:

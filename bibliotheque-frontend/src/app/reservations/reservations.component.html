@@ -1,0 +1,120 @@
+<div class="container-fluid px-3 px-md-4">
+  <h2 class="text-center mb-4">{{ 'reservations.title' | translate }}</h2>
+
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5 class="card-title">{{ 'reservations.newReservation' | translate }}</h5>
+      <app-reservation-form
+        [livres]="livres"
+        [adherents]="adherents"
+        [errorMessage]="erreurFormulaire"
+        [submitting]="creationEnCours"
+        [resetTrigger]="resetFormulaire"
+        [readonlyAdherentId]="estBibliothecaire ? null : monUserId"
+        (create)="onCreer($event)">
+      </app-reservation-form>
+    </div>
+  </div>
+
+  <!-- Onglets (uniquement pour le bibliothécaire) -->
+  <ul class="nav nav-tabs mb-3" *ngIf="estBibliothecaire">
+    <li class="nav-item">
+      <button class="nav-link" [class.active]="onglet === 'toutes'" (click)="onOngletChange('toutes')">
+        {{ 'reservations.tabAll' | translate }}
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" [class.active]="onglet === 'expirees'" (click)="onOngletChange('expirees')">
+        {{ 'reservations.tabExpired' | translate }}
+        <span class="badge bg-secondary ms-1" *ngIf="reservationsExpirees.length">
+          {{ reservationsExpirees.length }}
+        </span>
+      </button>
+    </li>
+  </ul>
+
+  <!-- ═══ ONGLET : Toutes les réservations ═══ -->
+  <ng-container *ngIf="onglet === 'toutes'">
+    <div class="row g-2 align-items-end mb-3">
+      <div class="col-12 col-sm-6 col-md-4">
+        <label for="filtreStatut" class="form-label">{{ 'reservations.filterByStatus' | translate }}</label>
+        <select id="filtreStatut" class="form-select" [(ngModel)]="filtreStatut" (ngModelChange)="onFiltreChange()">
+          <option value="">{{ 'reservations.all' | translate }}</option>
+          <option *ngFor="let s of statuts" [value]="s">{{ s }}</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- État : chargement -->
+    <div class="text-center py-5" *ngIf="etat === 'chargement'">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">{{ 'reservations.loading' | translate }}</span>
+      </div>
+      <p class="mt-2">{{ 'reservations.loading' | translate }}</p>
+    </div>
+
+    <!-- État : erreur -->
+    <div class="alert alert-danger d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2" role="alert" *ngIf="etat === 'erreur'">
+      <span>{{ 'reservations.serverUnreachable' | translate }}</span>
+      <button class="btn btn-outline-danger btn-sm" (click)="chargerReservations()">{{ 'reservations.retry' | translate }}</button>
+    </div>
+
+    <!-- État : liste vide -->
+    <div class="alert alert-info" role="alert" *ngIf="etat === 'vide'">
+      {{ 'reservations.empty' | translate }}
+    </div>
+
+    <!-- État : données -->
+    <ng-container *ngIf="etat === 'donnees'">
+      <div class="alert alert-danger alert-dismissible" role="alert" *ngIf="erreurAnnulation">
+        {{ erreurAnnulation }}
+        <button type="button" class="btn-close" aria-label="Fermer" (click)="erreurAnnulation = null"></button>
+      </div>
+      <app-reservation-list
+        [reservations]="reservations"
+        [cancellingId]="annulationEnCoursId"
+        [deletingId]="suppressionEnCoursId"
+        [isBibliothecaire]="estBibliothecaire"
+        (cancel)="onAnnuler($event)"
+        (delete)="onSupprimer($event)">
+      </app-reservation-list>
+    </ng-container>
+  </ng-container>
+
+  <!-- ═══ ONGLET : Réservations expirées ═══ -->
+  <ng-container *ngIf="onglet === 'expirees'">
+    <!-- État : chargement -->
+    <div class="text-center py-5" *ngIf="etatExpirees === 'chargement'">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">{{ 'reservations.loading' | translate }}</span>
+      </div>
+      <p class="mt-2">{{ 'reservations.loading' | translate }}</p>
+    </div>
+
+    <!-- État : erreur -->
+    <div class="alert alert-danger d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2" role="alert" *ngIf="etatExpirees === 'erreur'">
+      <span>{{ 'reservations.serverUnreachable' | translate }}</span>
+      <button class="btn btn-outline-danger btn-sm" (click)="chargerExpirees()">{{ 'reservations.retry' | translate }}</button>
+    </div>
+
+    <!-- État : liste vide -->
+    <div class="alert alert-info" role="alert" *ngIf="etatExpirees === 'vide'">
+      {{ 'reservations.noExpired' | translate }}
+    </div>
+
+    <!-- État : données -->
+    <ng-container *ngIf="etatExpirees === 'donnees'">
+      <div class="alert alert-danger alert-dismissible" role="alert" *ngIf="erreurSuppression">
+        {{ erreurSuppression }}
+        <button type="button" class="btn-close" aria-label="Fermer" (click)="erreurSuppression = null"></button>
+      </div>
+      <app-reservation-list
+        [reservations]="reservationsExpirees"
+        [deletingId]="suppressionEnCoursId"
+        [isBibliothecaire]="true"
+        (delete)="onSupprimer($event)">
+      </app-reservation-list>
+    </ng-container>
+  </ng-container>
+
+</div>

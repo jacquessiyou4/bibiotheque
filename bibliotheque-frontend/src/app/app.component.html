@@ -2,3 +2,10 @@
 <div class="container" style="margin-top: 20px;">
   <router-outlet></router-outlet>
 </div>
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 1080; max-width: 400px;" aria-live="polite">
+  <div *ngFor="let n of notificationService.notifications$ | async"
+       class="alert alert-{{ n.type }} alert-dismissible shadow mb-2" role="alert">
+    {{ n.message }}
+    <button type="button" class="btn-close" aria-label="Close" (click)="notificationService.dismiss(n.id)"></button>
+  </div>
+</div>

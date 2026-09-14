@@ -1,0 +1,113 @@
+{
+  "realm": "bibliotheque",
+  "displayName": "Bibliothèque",
+  "enabled": true,
+  "registrationAllowed": false,
+  "registrationEmailAsUsername": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "sslRequired": "external",
+  "accessTokenLifespan": 1800,
+  "roles": {
+    "realm": [
+      {
+        "name": "Admin",
+        "description": "Administrateur de la bibliothèque"
+      },
+      {
+        "name": "User",
+        "description": "Utilisateur de la bibliothèque"
+      },
+      {
+        "name": "ADHERENT",
+        "description": "Adhérent de la bibliothèque"
+      },
+      {
+        "name": "BIBLIOTHECAIRE",
+        "description": "Bibliothécaire de la bibliothèque"
+      }
+    ]
+  },
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "email": "admin@bibliotheque.local",
+      "firstName": "Admin",
+      "lastName": "Bibliothèque",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["Admin", "BIBLIOTHECAIRE"]
+    },
+    {
+      "username": "A1",
+      "enabled": true,
+      "email": "a1@bibliotheque.local",
+      "firstName": "Adhérent",
+      "lastName": "Un",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "A1123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["User", "ADHERENT"]
+    },
+    {
+      "username": "A2",
+      "enabled": true,
+      "email": "a2@bibliotheque.local",
+      "firstName": "Adhérent",
+      "lastName": "Deux",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "A2123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["User", "ADHERENT"]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "bibliotheque-frontend",
+      "name": "Frontend Angular",
+      "protocol": "openid-connect",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://localhost:4200/*", "http://localhost:8080/*"],
+      "webOrigins": ["http://localhost:4200", "http://localhost:8080"]
+    },
+    {
+      "clientId": "bibliotheque-backend",
+      "name": "Backend Spring Boot",
+      "protocol": "openid-connect",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "bibliotheque-backend-secret",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "redirectUris": ["http://localhost:8080/*"],
+      "webOrigins": ["http://localhost:8080"]
+    }
+  ]
+}

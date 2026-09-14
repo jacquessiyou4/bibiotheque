@@ -1,6 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { HomeComponent } from './home.component';
+import { TranslatePipe } from '../_i18n/translate.pipe';
+import { TranslationService } from '../_service/translation.service';
 
 describe('HomeComponent', () => {
   let component: HomeComponent;
@@ -8,7 +10,10 @@ describe('HomeComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [ HomeComponent ]
+      declarations: [ HomeComponent, TranslatePipe ],
+      providers: [
+        { provide: TranslationService, useValue: { translate: (key: string) => key } },
+      ]
     })
     .compileComponents();
 
@@ -17,7 +22,7 @@ describe('HomeComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should create', () => {
+  it('devrait être créé', () => {
     expect(component).toBeTruthy();
   });
 });

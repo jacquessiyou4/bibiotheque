@@ -1,13 +1,13 @@
-<h2>Book List</h2>
+<h2>{{ 'books.title' | translate }}</h2>
 <table class="table table-success table-striped">
     <thead>
         <tr>
-            <th> Book ID </th>
-            <th> Name </th>
-            <th> Author </th>
-            <th> Genre </th>
-            <th> Number of copies available </th>
-            <th> Actions </th>
+            <th> {{ 'books.bookId' | translate }} </th>
+            <th> {{ 'books.name' | translate }} </th>
+            <th> {{ 'books.author' | translate }} </th>
+            <th> {{ 'books.genre' | translate }} </th>
+            <th> {{ 'books.copies' | translate }} </th>
+            <th> {{ 'books.actions' | translate }} </th>
         </tr>
     </thead>
     <tbody>
@@ -18,9 +18,9 @@
             <td> {{ book.bookGenre }} </td>
             <td> {{ book.noOfCopies }} </td>
             <td>
-                <button (click) = "bookDetails(book.bookId)" class="btn btn-success"> View </button>
-                <button (click) = "updateBook(book.bookId)" class="btn btn-info"  style="margin-left: 10px"> Edit </button>
-                <button (click) = "deleteBook(book.bookId)" class="btn btn-danger" style="margin-left: 10px"> Delete </button>                
+                <button (click) = "bookDetails(book.bookId)" class="btn btn-success"> {{ 'books.view' | translate }} </button>
+                <button (click) = "updateBook(book.bookId)" class="btn btn-info"  style="margin-left: 10px"> {{ 'books.edit' | translate }} </button>
+                <button (click) = "deleteBook(book.bookId)" class="btn btn-danger" style="margin-left: 10px"> {{ 'books.delete' | translate }} </button>
             </td>
         </tr>
     </tbody>

@@ -1,4 +1,4 @@
-import { NgModule } from '@angular/core';
+import { ErrorHandler, NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http'
 import { AppRoutingModule } from './app-routing.module';
@@ -24,6 +24,12 @@ import { AuthInterceptor } from './_auth/auth.interceptor';
 import { ForbiddenComponent } from './forbidden/forbidden.component';
 import { BorrowBookComponent } from './borrow-book/borrow-book.component';
 import { ReturnBookComponent } from './return-book/return-book.component';
+import { ReservationsComponent } from './reservations/reservations.component';
+import { ReservationListComponent } from './reservations/reservation-list/reservation-list.component';
+import { ReservationFormComponent } from './reservations/reservation-form/reservation-form.component';
+import { BorrowListComponent } from './borrow-list/borrow-list.component';
+import { TranslatePipe } from './_i18n/translate.pipe';
+import { AppErrorHandler } from './_service/error-handler.service';
 
 @NgModule({
   declarations: [
@@ -43,6 +49,11 @@ import { ReturnBookComponent } from './return-book/return-book.component';
     ForbiddenComponent,
     BorrowBookComponent,
     ReturnBookComponent,
+    ReservationsComponent,
+    ReservationListComponent,
+    ReservationFormComponent,
+    BorrowListComponent,
+    TranslatePipe,
   ],
   imports: [
     BrowserModule,
@@ -52,6 +63,7 @@ import { ReturnBookComponent } from './return-book/return-book.component';
     RouterModule
   ],
   providers: [
+    { provide: ErrorHandler, useClass: AppErrorHandler },
     AuthGuard,
     {
       provide: HTTP_INTERCEPTORS,

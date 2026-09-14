@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'feat/**', 'feature/**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend (Java 8 + Maven)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v4
+        with:
+          java-version: '8'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build & test with coverage
+        run: cd bibliotheque-backend && mvn -B verify
+
+      - name: Upload backend coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: bibliotheque-backend/target/site/jacoco/
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: bibliotheque-backend/target/surefire-reports/
+
+  frontend:
+    name: Frontend (Node 18 + Angular)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: bibliotheque-frontend/package-lock.json
+
+      - name: Install dependencies
+        run: cd bibliotheque-frontend && npm ci
+
+      # Pas d'étape « ng lint » : aucun builder lint n'est configuré dans
+      # angular.json (@angular-eslint absent), la commande échouerait toujours.
+
+      - name: Unit tests with coverage
+        run: cd bibliotheque-frontend && npx ng test --no-watch --browsers=ChromeHeadlessCodeCoverage
+
+      - name: Upload frontend coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: bibliotheque-frontend/coverage/
+
+      - name: Build
+        run: cd bibliotheque-frontend && npx ng build --configuration production

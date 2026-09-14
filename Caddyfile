@@ -1,0 +1,20 @@
+# Caddyfile — Reverse proxy HTTPS pour la bibliothèque
+# Documentation : https://caddyserver.com/docs/caddyfile
+#
+# En développement local, Caddy génère automatiquement un certificat
+# auto-signé. En production, il utilise Let's Encrypt automatiquement.
+
+# Frontend Angular (port 4200 → 443)
+localhost {
+    reverse_proxy frontend:80
+}
+
+# Backend Spring Boot API (port 8080 → 8443)
+api.localhost {
+    reverse_proxy backend:8080
+}
+
+# Keycloak (port 8081 → 8443)
+keycloak.localhost {
+    reverse_proxy keycloak:8080
+}

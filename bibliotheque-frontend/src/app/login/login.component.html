@@ -1,14 +1,17 @@
 <div class="container col-md-6 offset-mid-3">
 <form autocomplete="off" #loginForm="ngForm" (ngSubmit)="login(loginForm)">
     <div class="mb-3">
-      <label class="form-label" style="margin-top: 100px;">Username</label>
+      <label class="form-label" style="margin-top: 100px;">{{ 'login.username' | translate }}</label>
       <input type="text" name="username" ngModel class="form-control" id="loginUsername" placeholder="Enter your username">
-      <div id="emailHelp" class="form-text">Username provided by the library admin.</div>
+      <div id="emailHelp" class="form-text">{{ 'login.usernameHelp' | translate }}</div>
     </div>
     <div class="mb-3">
-      <label class="form-label">Password</label>
-      <input type="password" name="password" ngModel class="form-control" id="loginPassword" placeholder="Enter your password">
+      <label class="form-label">{{ 'login.password' | translate }}</label>
+      <div class="input-group">
+        <input [type]="showPassword ? 'text' : 'password'" name="password" ngModel class="form-control" id="loginPassword" placeholder="Enter your password">
+        <button type="button" class="btn btn-outline-secondary" (click)="togglePasswordVisibility()">{{ (showPassword ? 'login.hide' : 'login.show') | translate }}</button>
+      </div>
     </div>
-    <input type="submit" value="Login" class="btn btn-primary"/>
+    <input type="submit" [value]="'login.login' | translate" class="btn btn-primary"/>
   </form>
 </div>

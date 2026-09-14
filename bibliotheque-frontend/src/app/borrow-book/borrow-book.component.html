@@ -1,13 +1,13 @@
-<h2>List of available books in the library</h2>
+<h2>{{ 'borrowBook.title' | translate }}</h2>
 <table class="table table-success table-striped">
     <thead>
         <tr>
-            <th> Book ID </th>
-            <th> Name </th>
-            <th> Author </th>
-            <th> Genre </th>
-            <th> Number of copies available </th>
-            <th> Actions </th>
+            <th> {{ 'books.bookId' | translate }} </th>
+            <th> {{ 'books.name' | translate }} </th>
+            <th> {{ 'books.author' | translate }} </th>
+            <th> {{ 'books.genre' | translate }} </th>
+            <th> {{ 'books.copies' | translate }} </th>
+            <th> {{ 'books.actions' | translate }} </th>
         </tr>
     </thead>
     <tbody>
@@ -18,7 +18,7 @@
             <td> {{ book.bookGenre }} </td>
             <td> {{ book.noOfCopies }} </td>
             <td>
-                <button (click) = "borrowBook(book.bookId)" class="btn btn-success"> Borrow </button>
+                <button (click) = "borrowBook(book.bookId)" class="btn btn-success"> {{ 'borrowBook.borrow' | translate }} </button>
             </td>
         </tr>
     </tbody>

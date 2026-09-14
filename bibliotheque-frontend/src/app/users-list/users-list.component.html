@@ -1,13 +1,13 @@
-<h2>User List</h2>
+<h2>{{ 'users.title' | translate }}</h2>
 <table class="table table-success table-striped">
     <thead>
         <tr>
-            <th> User ID </th>
-            <th> Name </th>
-            <th> Username </th>
-            <th> Role </th>
-            <th> View History </th>
-            <th> Edit User </th>
+            <th> {{ 'users.userId' | translate }} </th>
+            <th> {{ 'users.name' | translate }} </th>
+            <th> {{ 'users.username' | translate }} </th>
+            <th> {{ 'users.role' | translate }} </th>
+            <th> {{ 'users.viewHistory' | translate }} </th>
+            <th> {{ 'users.editUser' | translate }} </th>
         </tr>
     </thead>
     <tbody>
@@ -15,14 +15,12 @@
             <td> {{ user.userId }} </td>
             <td> {{ user.name }} </td>
             <td> {{ user.username }} </td>
-            <td> {{ user.role[0].roleName }} </td>
-            <td>        
-                <div *ngIf="user.role[0].roleName === 'User'">
-                    <button (click) = "userDetails(user.userId)" class="btn btn-success"> View </button>
-                </div>
+            <td> {{ user.role && user.role.length ? user.role[0].roleName : '—' }} </td>
+            <td>
+                <button (click) = "userDetails(user.userId)" class="btn btn-success"> {{ 'users.view' | translate }} </button>
             </td>
             <td>
-                <button (click) = "updateUser(user.userId)" class="btn btn-info"> Edit </button> 
+                <button (click) = "updateUser(user.userId)" class="btn btn-info"> {{ 'users.edit' | translate }} </button>
             </td>
         </tr>
     </tbody>

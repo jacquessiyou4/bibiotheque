@@ -1,9 +1,11 @@
-import { Component, OnInit } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { Books } from '../_model/books';
 import { Borrow } from '../_model/borrow';
 import { BooksService } from '../_service/books.service';
 import { BorrowService } from '../_service/borrow.service';
+import { NotificationService } from '../_service/notification.service';
 import { UserAuthService } from '../_service/user-auth.service';
 
 @Component({
@@ -11,7 +13,9 @@ import { UserAuthService } from '../_service/user-auth.service';
   templateUrl: './return-book.component.html',
   styleUrls: ['./return-book.component.css']
 })
-export class ReturnBookComponent implements OnInit {
+export class ReturnBookComponent implements OnInit, OnDestroy {
+
+  private destroy$ = new Subject<void>();
 
   books: Books[];
   borrow: Borrow[];
@@ -19,7 +23,8 @@ export class ReturnBookComponent implements OnInit {
   constructor(
     private borrowService: BorrowService,
     private booksService: BooksService,
-    private userAuthService: UserAuthService
+    private userAuthService: UserAuthService,
+    private notificationService: NotificationService,
   ) { }
 
   userId = this.userAuthService.getUserId();
@@ -29,26 +34,39 @@ export class ReturnBookComponent implements OnInit {
     this.getBooksByUser();
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   private getBooks() {
-    this.booksService.getBooksList().subscribe(data =>{
-      this.books = data;
+    this.booksService.getBooksList().pipe(takeUntil(this.destroy$)).subscribe({
+      next: (data) => this.books = data,
+      error: () => this.notificationService.showError('Erreur de chargement des livres')
     });
   }
 
   
   private getBooksByUser() {
-    this.borrowService.getBooksBorrowedByUser(this.userId).subscribe(data => {
-      this.borrow = data;
-    })
+    if (this.userId !== null) {
+      this.borrowService.getBooksBorrowedByUser(this.userId).pipe(takeUntil(this.destroy$)).subscribe({
+        next: (data) => this.borrow = data,
+        error: () => this.notificationService.showError('Erreur de chargement des emprunts')
+      });
+    }
   }
 
   brw: Borrow = new Borrow();
   public returnBook(borrowId: number) {
     this.brw.borrowId = borrowId;
-    this.borrowService.returnBook(this.brw).subscribe(data => {
-      console.log(data);
-    },
-    error => console.log(error));
+    this.borrowService.returnBook(this.brw).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => {
+        this.notificationService.showSuccess('Retour réussi');
+        // Sans rechargement, le bouton « Rendre » restait affiché.
+        this.getBooksByUser();
+      },
+      error: (err) => this.notificationService.showError(err?.error?.message || 'Erreur lors du retour')
+    });
   }
 
 }

@@ -1,28 +1,38 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { Books } from '../_model/books';
 import { BooksService } from '../_service/books.service';
+import { NotificationService } from '../_service/notification.service';
 
 @Component({
   selector: 'app-create-book',
   templateUrl: './create-book.component.html',
   styleUrls: ['./create-book.component.css']
 })
-export class CreateBookComponent implements OnInit {
+export class CreateBookComponent implements OnInit, OnDestroy {
+
+  private destroy$ = new Subject<void>();
 
   book: Books = new Books();
   constructor(private booksService: BooksService,
+    private notificationService: NotificationService,
     private router: Router) { }
 
   ngOnInit(): void {
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   saveBook() {
-    this.booksService.createBook(this.book).subscribe(data => {
-      console.log(data);
-      this.goToBooksList();
-    },
-    error => console.log(error));
+    this.booksService.createBook(this.book).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => this.goToBooksList(),
+      error: () => this.notificationService.showError('Erreur lors de la création du livre')
+    });
   }
 
   goToBooksList() {
@@ -30,7 +40,6 @@ export class CreateBookComponent implements OnInit {
   }
 
   onSubmit() {
-    console.log(this.book);
     this.saveBook();
   }
 

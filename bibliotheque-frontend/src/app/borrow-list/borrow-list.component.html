@@ -1,0 +1,48 @@
+<h2>{{ 'borrow.title' | translate }}</h2>
+
+<div class="row g-2 align-items-end mb-3">
+  <div class="col-12 col-sm-6 col-md-4">
+    <label for="filtreStatut" class="form-label">{{ 'borrow.filterByStatus' | translate }}</label>
+    <select id="filtreStatut" class="form-select" [(ngModel)]="filtreStatut">
+      <option value="">{{ 'borrow.all' | translate }}</option>
+      <option *ngFor="let s of statuts" [value]="s">{{ ('borrow.statut.' + s) | translate }}</option>
+    </select>
+  </div>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-success table-striped">
+      <thead>
+          <tr>
+              <th> {{ 'borrow.borrowId' | translate }} </th>
+              <th> {{ 'borrow.book' | translate }} </th>
+              <th> {{ 'borrow.borrower' | translate }} </th>
+              <th> {{ 'borrow.issueDate' | translate }} </th>
+              <th> {{ 'borrow.dueDate' | translate }} </th>
+              <th> {{ 'borrow.status' | translate }} </th>
+          </tr>
+      </thead>
+      <tbody>
+          <tr *ngFor="let borrow of rows">
+              <td data-label="Borrow ID"> {{ borrow.borrowId ?? '—' }} </td>
+              <td data-label="Book"> {{ borrow.bookName }} </td>
+              <td data-label="Borrower"> {{ borrow.borrowerName }} </td>
+              <td data-label="Issue Date"> {{ borrow.issueDate ?? '—' }} </td>
+              <td data-label="Due Date"> {{ borrow.dueDate ?? '—' }} </td>
+              <td data-label="Status">
+                  <span class="badge"
+                        [ngClass]="{
+                          'bg-warning text-dark': borrow.statut === 'Emprunté',
+                          'bg-secondary': borrow.statut === 'Rendu',
+                          'bg-success': borrow.statut === 'Disponible'
+                        }">
+                      {{ ('borrow.statut.' + borrow.statut) | translate }}
+                  </span>
+              </td>
+          </tr>
+          <tr *ngIf="rows.length === 0">
+              <td colspan="6" class="text-center">{{ 'borrow.noRecords' | translate }}</td>
+          </tr>
+      </tbody>
+  </table>
+</div>

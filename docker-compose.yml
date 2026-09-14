@@ -72,8 +72,8 @@ services:
       APP_KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/bibliotheque/protocol/openid-connect/certs
       APP_KEYCLOAK_ISSUER_LOCAL: http://localhost:${KEYCLOAK_PORT:-8081}/realms/bibliotheque
       APP_KEYCLOAK_ISSUER_INTERNAL: http://keycloak:8080/realms/bibliotheque
-      # Endpoint token appelé par le backend lui-même (POST /auth/token,
-      # /auth/refresh) : adresse interne, les jetons portent l'issuer interne.
+      # Endpoint token appelé par le backend lui-même (POST /auth/token) :
+      # adresse interne, les jetons portent l'issuer interne.
       APP_KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/bibliotheque/protocol/openid-connect/token
       JWT_SECRET: ${JWT_SECRET}
       # Origines autorisées en CORS (le frontend nginx est servi sur 4200).

@@ -1,7 +1,6 @@
 package com.ibizabroker.bibliotheque.controller;
 
 import com.ibizabroker.bibliotheque.dto.LoginRequest;
-import com.ibizabroker.bibliotheque.dto.RefreshTokenRequest;
 import com.ibizabroker.bibliotheque.dto.TokenResponse;
 import com.ibizabroker.bibliotheque.service.KeycloakTokenService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -17,7 +16,7 @@ import javax.validation.Valid;
 
 /**
  * Connexion Keycloak visible dans Swagger : la réponse affiche l'access token
- * et le refresh token. Aucun jeton n'est requis pour appeler ces endpoints
+ * et le refresh token. Aucun jeton n'est requis pour appeler cet endpoint
  * (@SecurityRequirements vide : Swagger n'envoie pas d'en-tête Authorization,
  * qu'un jeton expiré ferait refuser en 401 avant même le contrôleur).
  */
@@ -35,21 +34,12 @@ public class AuthTokenController {
 
     @Operation(summary = "Se connecter : obtenir un access token et un refresh token",
             description = "Aucun jeton requis. 200 : copier accessToken dans « Authorize » > bearerAuth pour "
-                    + "appeler l'API ; quand il expire (expiresIn secondes), envoyer refreshToken à "
-                    + "POST /auth/refresh. 401 : identifiant ou mot de passe incorrect ; 503 : Keycloak indisponible.")
+                    + "appeler l'API ; quand il expire (expiresIn secondes), relancer cet endpoint. "
+                    + "Le refreshToken est affiché pour information : il n'est pas utilisable depuis Swagger. "
+                    + "401 : identifiant ou mot de passe incorrect ; 503 : Keycloak indisponible.")
     @SecurityRequirements
     @PostMapping("/token")
     public TokenResponse login(@Valid @RequestBody LoginRequest request) {
         return keycloakTokenService.login(request.getUsername(), request.getPassword());
-    }
-
-    @Operation(summary = "Renouveler les jetons avec le refresh token",
-            description = "Aucun jeton requis. Renvoie un nouvel access token et un nouveau refresh token "
-                    + "(l'ancien refresh token ne doit plus être réutilisé). 401 : refresh token invalide, "
-                    + "expiré ou non émis par POST /auth/token ; 503 : Keycloak indisponible.")
-    @SecurityRequirements
-    @PostMapping("/refresh")
-    public TokenResponse refresh(@Valid @RequestBody RefreshTokenRequest request) {
-        return keycloakTokenService.refresh(request.getRefreshToken());
     }
 }

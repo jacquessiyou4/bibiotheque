@@ -46,7 +46,7 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.CONFLICT, ex.getMessage());
     }
 
-    // Identifiants ou refresh token refusés par Keycloak (POST /auth/token, /auth/refresh).
+    // Identifiants refusés par Keycloak (POST /auth/token).
     @ExceptionHandler(UnauthorizedException.class)
     public ResponseEntity<Map<String, String>> handleUnauthorized(UnauthorizedException ex) {
         return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());

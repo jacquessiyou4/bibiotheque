@@ -88,32 +88,13 @@ class KeycloakTokenServiceTest {
     }
 
     @Test
-    void refresh_envoieLeGrantRefreshTokenEtRenvoieDeNouveauxJetons() {
-        MultiValueMap<String, String> attendu = new LinkedMultiValueMap<>();
-        attendu.add("grant_type", "refresh_token");
-        attendu.add("client_id", CLIENT_ID);
-        attendu.add("refresh_token", "refresh-456");
-        keycloak.expect(requestTo(TOKEN_URI))
-                .andExpect(method(HttpMethod.POST))
-                .andExpect(content().formData(attendu))
-                .andRespond(withSuccess(REPONSE_JETONS, MediaType.APPLICATION_JSON));
-
-        TokenResponse jetons = service.refresh("refresh-456");
-
-        assertThat(jetons.getAccessToken()).isEqualTo("acces-123");
-        assertThat(jetons.getRefreshToken()).isEqualTo("refresh-456");
-    }
-
-    @Test
-    void refresh_jetonExpireOuInvalide_leve401() {
-        // Keycloak répond 400 invalid_grant pour un refresh token expiré.
+    void login_compteDesactive_keycloakRepond400_leve401() {
         keycloak.expect(requestTo(TOKEN_URI))
                 .andRespond(withStatus(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON)
-                        .body("{\"error\":\"invalid_grant\",\"error_description\":\"Token is not active\"}"));
+                        .body("{\"error\":\"invalid_grant\",\"error_description\":\"Account disabled\"}"));
 
-        assertThatThrownBy(() -> service.refresh("expire"))
-                .isInstanceOf(UnauthorizedException.class)
-                .hasMessageContaining("POST /auth/token");
+        assertThatThrownBy(() -> service.login("A2", "A2123"))
+                .isInstanceOf(UnauthorizedException.class);
     }
 
     @Test

@@ -1,12 +1,26 @@
 package com.ibizabroker.bibliotheque.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 public class TokenResponse {
 
+    @Schema(description = "Jeton d'accès à coller dans « Authorize » > bearerAuth")
     private String accessToken;
+
+    @Schema(description = "Affiché pour information : non utilisable depuis Swagger. "
+            + "Quand l'access token expire, relancer POST /auth/token.")
     private String refreshToken;
+
+    @Schema(example = "Bearer")
     private String tokenType;
+
+    @Schema(description = "Durée de validité de l'access token, en secondes", example = "1800")
     private long expiresIn;
+
+    @Schema(description = "Durée de validité du refresh token, en secondes", example = "1800")
     private long refreshExpiresIn;
+
+    @Schema(example = "profile email")
     private String scope;
 
     public TokenResponse() {}

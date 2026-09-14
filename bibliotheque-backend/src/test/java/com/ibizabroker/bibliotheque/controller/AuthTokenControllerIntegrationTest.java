@@ -26,9 +26,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Tests d'intégration de POST /auth/token et POST /auth/refresh : accessibles
- * sans jeton, réponse avec les deux jetons, erreurs 400 / 401 / 503, et
- * absence d'exigence de sécurité dans la documentation Swagger.
+ * Tests d'intégration de POST /auth/token : accessible sans jeton, réponse
+ * avec les deux jetons, erreurs 400 / 401 / 503, et absence d'exigence de
+ * sécurité dans la documentation Swagger.
  * KeycloakTokenService et le décodeur JWT sont simulés.
  */
 @SpringBootTest(properties = {
@@ -117,38 +117,6 @@ class AuthTokenControllerIntegrationTest {
     }
 
     @Test
-    void postRefresh_sansJeton_renvoieDeNouveauxJetons() throws Exception {
-        when(keycloakTokenService.refresh("refresh-456")).thenReturn(JETONS);
-
-        mockMvc.perform(post("/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"refreshToken\":\"refresh-456\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accessToken").value("acces-123"))
-                .andExpect(jsonPath("$.refreshToken").value("refresh-456"));
-    }
-
-    @Test
-    void postRefresh_jetonExpire_renvoie401() throws Exception {
-        when(keycloakTokenService.refresh("expire"))
-                .thenThrow(new UnauthorizedException("Refresh token invalide ou expiré : reconnectez-vous avec POST /auth/token."));
-
-        mockMvc.perform(post("/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"refreshToken\":\"expire\"}"))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    void postRefresh_sansRefreshToken_renvoie400() throws Exception {
-        mockMvc.perform(post("/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors.refreshToken").exists());
-    }
-
-    @Test
     void getToken_nEstPasOuvertSansJeton() throws Exception {
         // Seul POST est public : les autres méthodes restent protégées.
         mockMvc.perform(get("/auth/token"))
@@ -156,11 +124,20 @@ class AuthTokenControllerIntegrationTest {
     }
 
     @Test
-    void swagger_endpointsDeConnexion_nExigentAucunJeton() throws Exception {
+    void postRefresh_nEstPasPublic() throws Exception {
+        // /auth/refresh a été retiré : sans jeton, la route n'est plus ouverte.
+        mockMvc.perform(post("/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"refresh-456\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void swagger_connexionSansJeton_etPasDEndpointDeRenouvellement() throws Exception {
         mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/auth/token'].post.security").isEmpty())
-                .andExpect(jsonPath("$.paths['/auth/refresh'].post.security").isEmpty())
-                .andExpect(jsonPath("$.paths['/auth/token'].post.tags[0]").value("Authentification"));
+                .andExpect(jsonPath("$.paths['/auth/token'].post.tags[0]").value("Authentification"))
+                .andExpect(jsonPath("$.paths['/auth/refresh']").doesNotExist());
     }
 }

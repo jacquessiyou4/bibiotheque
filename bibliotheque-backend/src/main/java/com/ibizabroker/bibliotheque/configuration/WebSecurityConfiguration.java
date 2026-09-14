@@ -48,8 +48,8 @@ public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
         httpSecurity.cors();
         httpSecurity.csrf().disable()
                 .authorizeRequests().antMatchers("/authenticate").permitAll()
-                // Connexion / renouvellement Keycloak : on n'a pas encore de jeton valide.
-                .antMatchers(HttpMethod.POST, "/auth/token", "/auth/refresh").permitAll()
+                // Connexion Keycloak : on n'a pas encore de jeton valide.
+                .antMatchers(HttpMethod.POST, "/auth/token").permitAll()
                 .antMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 // Healthcheck Docker (sans jeton) ; les autres endpoints Actuator restent protégés.
                 .antMatchers("/actuator/health").permitAll()

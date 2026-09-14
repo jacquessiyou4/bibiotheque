@@ -1,12 +1,13 @@
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { NgForm } from '@angular/forms';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { CreateUserRequest, UserListItem, Users } from '../_model/users';
 import { LIST_PAGE_SIZE, Page } from '../_model/page';
+import { Profile, TokenResponse } from '../_model/auth';
 import { UserAuthService } from './user-auth.service';
-import { apiUrl, keycloakClient, keycloakRealm, keycloakUrl } from './api-config';
+import { apiUrl } from './api-config';
 
 /**
  * Le backend renvoie des UserResponse (rôles = liste de noms) ; les
@@ -38,35 +39,26 @@ export class UsersService {
   ) { }
 
   /**
-   * Authentification déléguée à Keycloak (Direct Access Grant, password flow).
-   * Keycloak répond un access_token JWT qui sera présenté au backend dans
-   * l'en-tête Authorization (voir AuthInterceptor).
+   * Connexion via le backend (POST /auth/token), qui obtient les jetons
+   * auprès de Keycloak : le navigateur ne contacte plus Keycloak.
+   * L'accessToken est ensuite présenté au backend dans l'en-tête
+   * Authorization (voir AuthInterceptor). No-Auth : un ancien jeton expiré
+   * ne doit pas être envoyé, le backend le refuserait avant la connexion.
    */
-  public login(loginData: NgForm) {
-    const body = new HttpParams()
-      .set('grant_type', 'password')
-      .set('client_id', keycloakClient())
-      .set('username', loginData.value.username)
-      .set('password', loginData.value.password);
-
-    return this.httpClient.post(
-      `${keycloakUrl()}/realms/${keycloakRealm()}/protocol/openid-connect/token`,
-      body,
-      {
-        headers: new HttpHeaders({
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'No-Auth': 'True'
-        })
-      }
+  public login(loginData: NgForm): Observable<TokenResponse> {
+    return this.httpClient.post<TokenResponse>(
+      `${apiUrl()}/auth/token`,
+      { username: loginData.value.username, password: loginData.value.password },
+      { headers: new HttpHeaders({ 'No-Auth': 'True' }) }
     );
   }
 
   /**
-   * Renvoie l'utilisateur LOCAL de l'application associé au jeton Keycloak
-   * courant (utilisé notamment pour récupérer le userId des emprunts).
+   * Renvoie l'utilisateur LOCAL de l'application associé au jeton courant
+   * (utilisé notamment pour récupérer le userId des emprunts).
    */
-  public getMe() {
-    return this.httpClient.get(`${apiUrl()}/me`);
+  public getProfile(): Observable<Profile> {
+    return this.httpClient.get<Profile>(`${apiUrl()}/profile`);
   }
 
   public roleMatch(allowedRoles: string[]): boolean {

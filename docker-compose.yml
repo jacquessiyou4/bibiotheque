@@ -120,7 +120,6 @@ services:
           cpus: '0.25'
     environment:
       API_URL: http://localhost:${BACKEND_PORT:-8080}
-      KEYCLOAK_URL: http://localhost:${KEYCLOAK_PORT:-8081}
     ports:
       - "${FRONTEND_PORT:-4200}:80"
     depends_on:

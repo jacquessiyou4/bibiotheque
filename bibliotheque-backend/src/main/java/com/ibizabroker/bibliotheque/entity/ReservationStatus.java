@@ -1,6 +1,6 @@
 package com.ibizabroker.bibliotheque.entity;
 
-public enum StatutReservation {
+public enum ReservationStatus {
     EN_ATTENTE,
     DISPONIBLE,
     ANNULEE,

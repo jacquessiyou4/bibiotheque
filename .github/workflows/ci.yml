@@ -37,6 +37,32 @@ jobs:
           name: backend-test-results
           path: bibliotheque-backend/target/surefire-reports/
 
+  e2e:
+    name: E2E (Keycloak + PostgreSQL réels)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v4
+        with:
+          java-version: '8'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      # Testcontainers démarre, dans le Docker du runner, un vrai Keycloak
+      # (realm keycloak/realm-bibliotheque.json) et un vrai PostgreSQL.
+      # La couverture est vérifiée par le job backend : JaCoCo désactivé ici.
+      - name: End-to-end tests
+        run: cd bibliotheque-backend && mvn -B -Pe2e verify -Djacoco.skip=true
+
+      - name: Upload E2E results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: bibliotheque-backend/target/failsafe-reports/
+
   frontend:
     name: Frontend (Node 18 + Angular)
     runs-on: ubuntu-latest
@@ -56,8 +82,10 @@ jobs:
       # Pas d'étape « ng lint » : aucun builder lint n'est configuré dans
       # angular.json (@angular-eslint absent), la commande échouerait toujours.
 
+      # --code-coverage : sans instrumentation, les seuils de karma.conf.js
+      # (coverageReporter.check) n'auraient aucune mesure à vérifier.
       - name: Unit tests with coverage
-        run: cd bibliotheque-frontend && npx ng test --no-watch --browsers=ChromeHeadlessCodeCoverage
+        run: cd bibliotheque-frontend && npx ng test --no-watch --code-coverage --browsers=ChromeHeadlessCodeCoverage
 
       - name: Upload frontend coverage
         if: always()

@@ -1,23 +1,15 @@
 package com.ibizabroker.bibliotheque.controller;
 
-import com.ibizabroker.bibliotheque.dao.UsersRepository;
 import com.ibizabroker.bibliotheque.dto.ProfileResponse;
 import com.ibizabroker.bibliotheque.entity.JwtRequest;
 import com.ibizabroker.bibliotheque.entity.JwtResponse;
-import com.ibizabroker.bibliotheque.entity.Role;
-import com.ibizabroker.bibliotheque.entity.Users;
-import com.ibizabroker.bibliotheque.exceptions.NotFoundException;
 import com.ibizabroker.bibliotheque.service.JwtService;
+import com.ibizabroker.bibliotheque.service.ProfileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Tag(name = "Authentification")
 @Slf4j
@@ -25,11 +17,11 @@ import java.util.stream.Collectors;
 public class JwtController {
 
     private final JwtService jwtService;
-    private final UsersRepository usersRepository;
+    private final ProfileService profileService;
 
-    public JwtController(JwtService jwtService, UsersRepository usersRepository) {
+    public JwtController(JwtService jwtService, ProfileService profileService) {
         this.jwtService = jwtService;
-        this.usersRepository = usersRepository;
+        this.profileService = profileService;
     }
 
     @Operation(summary = "Obsolète : ancien login local, jeton refusé par l'API",
@@ -38,6 +30,8 @@ public class JwtController {
             deprecated = true)
     @PostMapping("/authenticate")
     public JwtResponse createJwtToken(@RequestBody JwtRequest jwtRequest) throws Exception {
+        log.warn("[SECURITE] Appel de l'endpoint obsolète POST /authenticate - utilisateur={}",
+                jwtRequest.getUsername());
         return jwtService.createJwtToken(jwtRequest);
     }
 
@@ -49,22 +43,6 @@ public class JwtController {
     @Operation(summary = "Obtenir les informations personnelles de l'utilisateur connecté")
     @GetMapping("/profile")
     public ProfileResponse profile(Authentication authentication) {
-        String username = authentication.getName();
-        Users user = usersRepository.findByUsername(username)
-                .orElseThrow(() -> new NotFoundException(
-                        "Aucun utilisateur local pour le compte Keycloak « " + username + " »."));
-
-        String email = null;
-        if (authentication instanceof JwtAuthenticationToken) {
-            email = ((JwtAuthenticationToken) authentication).getToken().getClaimAsString("email");
-        }
-
-        List<String> roles = user.getRole() == null ? Collections.emptyList()
-                : user.getRole().stream()
-                        .map(Role::getRoleName)
-                        .sorted()
-                        .collect(Collectors.toList());
-
-        return new ProfileResponse(user.getUserId(), user.getUsername(), user.getName(), email, roles);
+        return profileService.profilCourant(authentication);
     }
 }

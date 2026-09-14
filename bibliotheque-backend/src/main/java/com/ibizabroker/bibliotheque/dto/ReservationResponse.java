@@ -1,6 +1,6 @@
 package com.ibizabroker.bibliotheque.dto;
 
-import com.ibizabroker.bibliotheque.entity.StatutReservation;
+import com.ibizabroker.bibliotheque.entity.ReservationStatus;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,5 +18,5 @@ public class ReservationResponse {
     private String adherentNom;
     private LocalDateTime dateReservation;
     private LocalDateTime dateExpiration;
-    private StatutReservation statut;
+    private ReservationStatus statut;
 }

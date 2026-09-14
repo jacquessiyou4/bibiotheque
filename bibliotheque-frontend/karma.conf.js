@@ -22,7 +22,18 @@ module.exports = function (config) {
       reporters: [
         { type: 'html' },
         { type: 'text-summary' }
-      ]
+      ],
+      // Seuils vérifiés à chaque `ng test --code-coverage` (donc par le CI) :
+      // la couverture ne peut plus baisser en silence. Mesure au 14/09/2026 :
+      // 94,3 % des instructions, 88,0 % des branches, 95,4 % des fonctions, 94,4 % des lignes.
+      check: {
+        global: {
+          statements: 90,
+          branches: 80,
+          functions: 90,
+          lines: 90
+        }
+      }
     },
     reporters: ['progress', 'coverage'],
     port: 9876,

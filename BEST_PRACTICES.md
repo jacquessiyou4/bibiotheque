@@ -9,7 +9,7 @@
 
 ## 🔴 Priorité critique — Sécurité & fiabilité
 
-### 1. Supprimer tous les `console.log` du code frontend
+### ~~1. Supprimer tous les `console.log` du code frontend~~
 
 26 instances de `console.log` / `console.warn` / `console.error` sont
 présentes dans les composants Angular. En production, elles exposent des
@@ -155,7 +155,7 @@ providers: [
 
 ---
 
-### 6. Introduire des DTOs pour l'API (Backend)
+### ~~6. Introduire des DTOs pour l'API (Backend)~~
 
 Les contrôleurs retournent directement les entités JPA (`Books`, `Users`).
 Cela expose le schéma interne de la base (colonnes, relations Hibernate) et
@@ -203,7 +203,7 @@ public List<UserResponse> getAllUsers() {
 
 ---
 
-### 7. Remplacer `console.log` par un logging structuré (Backend)
+### ~~7. Remplacer `console.log` par un logging structuré (Backend)~~
 
 Les contrôleurs ne loguent pas les requêtes. Les composants de sécurité
 (`SecurityAuditFilter`, `JwtAuthenticationEntryPoint`) le font bien.
@@ -225,7 +225,7 @@ public class BooksController {
 
 ---
 
-### 8. Ajouter la pagination
+### ~~8. Ajouter la pagination~~
 
 `GET /admin/books` et `GET /admin/users` retournent **tous** les enregistrements.
 Pour une bibliothèque réelle avec des centaines de livres et utilisateurs,
@@ -256,7 +256,7 @@ getBooks(page: number = 0, size: number = 20): Observable<Page<Books>> {
 
 ## 🟡 Priorité moyenne — Qualité du code
 
-### 9. Nettoyer les modèles frontend
+### ~~9. Nettoyer les modèles frontend~~
 
 La classe `Users` expose le champ `password` côté client. C'est un risque
 de sécurité ( même hashé, le hash ne doit jamais quitter le backend ).
@@ -361,7 +361,7 @@ public Books createBook(@Valid @RequestBody Books book) {
 
 ---
 
-### 12. Uniformiser la langue des tests
+### ~~12. Uniformiser la langue des tests~~
 
 Les descriptions des tests mélangent français et anglais :
 
@@ -448,7 +448,7 @@ jobs:
 
 ---
 
-### 15. Ajouter un test E2E avec Keycloak
+### ~~15. Ajouter un test E2E avec Keycloak~~
 
 Les tests backend mockent le décodeur JWT. Un test d'intégration complet
 obtiendrait un vrai token depuis Keycloak :
@@ -481,7 +481,7 @@ class EndToEndAuthTest {
 
 ---
 
-### 16. Activer `OnPush` change detection
+### ~~16. Activer `OnPush` change detection~~
 
 Tous les composants Angular utilisent la détection de changement par défaut
 (`Default`). Pour les listes de livres, utilisateurs et emprunts, passer à
@@ -584,7 +584,7 @@ jwt.secret=${JWT_SECRET:clé-par-défaut-seulement-en-dev}
 
 ---
 
-### 20. Remplacer `Optional.get()` par `orElseThrow()`
+### ~~20. Remplacer `Optional.get()` par `orElseThrow()`~~
 
 **Fichiers :** `BorrowController.java` (lignes 33, 34, 62, 63),
 `JwtService.java` (lignes 42, 48)
@@ -918,7 +918,7 @@ ports:
 
 ## 🟡 Priorité moyenne — Qualité du code (nouvelles recommandations)
 
-### 35. Ajouter la validation côté client
+### ~~35. Ajouter la validation côté client~~
 
 **Fichiers :** Tous les formulaires Angular
 
@@ -961,7 +961,7 @@ deleteBook(bookId: number) {
 
 ---
 
-### 37. Ajouter des headers de sécurité dans nginx
+### ~~37. Ajouter des headers de sécurité dans nginx~~
 
 **Fichier :** `bibliotheque-frontend/nginx.conf`
 
@@ -1048,7 +1048,7 @@ d'intégration avec MockMvc sont présents.
 
 ---
 
-### 42. Ajouter la couverture de code dans le CI
+### ~~42. Ajouter la couverture de code dans le CI~~
 
 **Fichiers :** `pom.xml`, `.github/workflows/ci.yml`
 
@@ -1063,7 +1063,7 @@ frontend. Le CI ne vérifie pas le minimum de couverture.
 
 ---
 
-### 43. Corriger les incohérences de nommage des entités
+### ~~43. Corriger les incohérences de nommage des entités~~
 
 **Fichiers :** Toutes les entités
 
@@ -1139,6 +1139,11 @@ de tables sont aussi incohérents (`Books` vs `reservation`).
 | 🟢 | ~~Logging dans scheduled task~~ | Faible | Observabilité |
 | 🟢 | ~~Fix `as any` dates~~ | Faible | Type safety |
 | 🟢 | ~~Initialisation champ header~~ | Faible | Fiabilité |
+| 🟡 | ~~Langue unique (français) pour les tests~~ | Faible | Lisibilité |
+| 🟡 | ~~Content-Security-Policy nginx~~ | Faible | Sécurité |
+| 🟡 | ~~Seuils de couverture bloquants (JaCoCo, Karma)~~ | Faible | Qualité |
+| 🟢 | ~~Test E2E avec un vrai Keycloak~~ | Élevé | Qualité |
+| 🟢 | ~~Nommage des entités (`ReservationStatus`)~~ | Moyen | Lisibilité |
 
 ---
 
@@ -1208,26 +1213,54 @@ de tables sont aussi incohérents (`Books` vs `reservation`).
 **Statut :** ~~Fait~~ — `HEALTHCHECK --interval=10s --timeout=5s --retries=5`.
 
 ### 66. `cap_drop` + `no-new-privileges`
-**Statut :** ~~Fait~~ — Ajouté à tous les services Docker.
+**Statut :** ~~Fait~~ — Ajouté à tous les services Docker, y compris `caddy` (profile `https`) avec `cap_add: NET_BIND_SERVICE`, limites et healthcheck.
 
 ### 67. Avertissement .env production
 **Statut :** ~~Fait~~ — En-tête d'avertissement ajouté à `.env.example`.
 
 ### 68. Activer Actuator métriques
-**Statut :** ~~Fait~~ — `management.endpoints.web.exposure.include=health,info,metrics,prometheus`.
+**Statut :** ~~Fait~~ — `management.endpoints.web.exposure.include=health,info,metrics,prometheus` et dépendance `micrometer-registry-prometheus` (sans elle `/actuator/prometheus` répondait 404).
 
 ### 69. Header corrélation requestId
-**Statut :** ~~Fait~~ — `X-Request-ID` généré côté frontend, loggé côté backend via MDC.
+**Statut :** ~~Fait~~ — `X-Request-ID` généré côté frontend, placé dans le MDC par `SecurityAuditFilter` et affiché sur chaque ligne de log grâce à `logging.pattern.level` (`[requestId=…]`).
 
 ### 70. Tests unitaires BooksService/BorrowService
-**Statut :** ~~Fait~~ — `BooksServiceTest` (9 tests) et `BorrowServiceTest` (10 tests) créés.
+**Statut :** ~~Fait~~ — `BooksServiceTest` (9 tests) et `BorrowServiceTest` (11 tests) créés.
 
 ### 71. Tests Angular réels
 **Statut :** ~~Fait~~ — Les tests existants ont été mis à jour avec les corrections de types.
 
 ### 72. Test flow emprunt→retour complet
-**Statut :** ~~Fait~~ — Couvert par `BorrowServiceTest.returnBook_livreDisponible_rendLeLivre`.
+**Statut :** ~~Fait~~ — Couvert par `BorrowServiceTest.returnBook_empruntExistant_rendLeLivre` (et les cas d'erreur associés), et de bout en bout par `KeycloakEndToEndIT.adherent_empruntePuisRendUnLivre`.
 
 ---
 
-*Dernière mise à jour : septembre 2026*
+## Corrections des éléments partiellement faits (14 septembre 2026)
+
+Un audit du code a montré que 16 recommandations marquées « faites » ne
+l'étaient qu'en partie, et que la 15 n'avait pas été commencée. Toutes sont
+désormais terminées et vérifiées.
+
+| # | Correction | Où | Vérifié par |
+|---|---|---|---|
+| 1 | Plus aucune sortie console en production : `AppErrorHandler` n'écrit qu'en mode développement (`isDevMode()`), et un échec de démarrage affiche un message au lieu d'une page blanche. | `error-handler.service.ts`, `main.ts` | Tests Karma |
+| 6 | Plus aucune entité renvoyée par l'API : `BorrowResponse` (mêmes champs JSON), `addUserByAdmin` renvoie `UserResponse`, `/me` (obsolète) renvoie le même DTO que `/profile` via `ProfileService`. | `dto/BorrowResponse.java`, `AdminController`, `MeController`, `ProfileService` | Tests d'intégration, contrôle sur la stack |
+| 7 | Journalisation des actions métier : emprunt, retour, création / modification / suppression de livre, réservation créée / annulée / supprimée, connexion réussie, appel de l'ancien `/authenticate`. | Contrôleurs | Logs de la stack |
+| 8 | Pagination réelle côté Angular : listes des livres et des utilisateurs par pages de 10 (Précédent / Suivant). Les écrans qui recoupent toutes les données (emprunt, retour, réservations) chargent toujours la liste complète. | `books-list`, `users-list`, `DEFAULT_PAGE_SIZE` | Tests Karma |
+| 9 | Plus de champ `password` dans le modèle `Users` ; un nouveau mot de passe se passe à part (`updateUser(id, user, newPassword?)`). | `_model/users.ts`, `users.service.ts` | Tests Karma |
+| 15 | Test de bout en bout `KeycloakEndToEndIT` : Keycloak 24 réel (realm du projet) et PostgreSQL réel démarrés par Testcontainers ; 9 scénarios (jeton réel, `/auth/token`, 401 sans jeton ou jeton falsifié, 403, emprunt puis retour, Prometheus, `X-Request-ID`). Lancement : `./mvnw -Pe2e verify` (Docker requis), job CI `e2e`. | `e2e/KeycloakEndToEndIT.java`, profil Maven `e2e`, `.github/workflows/ci.yml` | 9/9 réussis |
+| 16 | `OnPush` sur les 20 composants : `markForCheck()` après chaque réponse HTTP, le header se rafraîchit à chaque navigation, et le pipe `translate` marque la vue quand la langue change (`TranslationService.lang$`). | Tous les composants, `translate.pipe.ts` | Tests Karma, bascule de langue dans Chrome |
+| 20 | Dernier `Optional.get()` remplacé par `orElseThrow()`. | `JwtService.java` | Tests |
+| 23 | Injection par constructeur aussi dans la configuration de sécurité. | `WebSecurityConfiguration`, `JwtAuthenticationEntryPoint`, `LoggingAccessDeniedHandler` | Tests |
+| 35 | Validation côté client ajoutée aux formulaires de connexion, d'ajout / modification de livre et de modification d'utilisateur (messages traduits, bouton désactivé tant que le formulaire est invalide). | Templates correspondants, `translations.ts` | Tests Karma |
+| 37 | En-tête `Content-Security-Policy` (`script-src 'self'`, `connect-src` construit depuis `API_URL`), généré au démarrage du conteneur ; le CSS critique n'est plus injecté par un `onload` en ligne (`inlineCritical: false`). | `nginx.conf`, `csp.conf`, `40-env-config.sh`, `angular.json` | En-tête servi, aucune violation dans la console de Chrome |
+| 41 | Tests unitaires (Mockito, sans Spring) pour tous les contrôleurs et pour `ProfileService`. | `BooksControllerTest`, `BorrowControllerTest`, `ReservationControllerTest`, `MeControllerTest`, `JwtControllerTest`, `AuthTokenControllerTest`, `ProfileServiceTest` | `mvn verify` |
+| 42 | Seuils bloquants : JaCoCo 90 % des lignes / 80 % des branches (`mvn verify`), Karma 90 / 80 / 90 / 90 (`ng test --code-coverage`). Mesure : backend 96,0 % / 89,6 %, frontend 94,3 % instructions / 88,0 % branches. | `pom.xml`, `karma.conf.js` | `mvn verify`, `ng test --code-coverage` |
+| 43 | Le seul type au nom français, `StatutReservation`, devient `ReservationStatus` (backend et frontend). Les valeurs de l'enum, les noms de tables et les champs JSON (`statut`, `livreId`…) sont inchangés : ni migration ni changement d'API. Les noms au pluriel (`Books`, `Users`) sont conservés pour la même raison. | `entity/ReservationStatus.java`, `_model/reservation.ts` | Tests |
+| 66 | `caddy` (profile `https`) : `cap_drop: ALL` + `cap_add: NET_BIND_SERVICE`, `no-new-privileges`, limites 128 Mo / 0,25 CPU, healthcheck sur l'API d'administration. | `docker-compose.yml` | Démarré avec `--profile https` : conteneur sain, HTTPS 200 |
+| 68 | Dépendance `micrometer-registry-prometheus` ajoutée : `/actuator/prometheus` répond (jeton requis). | `pom.xml` | 200 avec jeton, 401 sans ; test E2E |
+| 69 | `logging.pattern.level=%5p [requestId=%X{requestId:-}]` : chaque ligne de log porte l'identifiant de la requête. | `application.properties` | Logs de la stack, test E2E |
+
+---
+
+*Dernière mise à jour : 14 septembre 2026*

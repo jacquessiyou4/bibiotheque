@@ -40,6 +40,8 @@ public class AuthTokenController {
     @SecurityRequirements
     @PostMapping("/token")
     public TokenResponse login(@Valid @RequestBody LoginRequest request) {
-        return keycloakTokenService.login(request.getUsername(), request.getPassword());
+        TokenResponse jetons = keycloakTokenService.login(request.getUsername(), request.getPassword());
+        log.info("[SECURITE] Connexion réussie via POST /auth/token - utilisateur={}", request.getUsername());
+        return jetons;
     }
 }

@@ -4,21 +4,20 @@ import { NgForm } from '@angular/forms';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { CreateUserRequest, UserListItem, Users } from '../_model/users';
-import { LIST_PAGE_SIZE, Page } from '../_model/page';
+import { DEFAULT_PAGE_SIZE, LIST_PAGE_SIZE, Page } from '../_model/page';
 import { Profile, TokenResponse } from '../_model/auth';
 import { UserAuthService } from './user-auth.service';
 import { apiUrl } from './api-config';
 
 /**
- * Le backend renvoie des UserResponse (rôles = liste de noms) ; les
- * composants manipulent le modèle Users (rôles = [{ roleName }]).
+ * Le backend renvoie des UserResponse (rôles = liste de noms, jamais de mot
+ * de passe) ; les composants manipulent le modèle Users (rôles = [{ roleName }]).
  */
 function toUsers(user: UserListItem): Users {
   return {
     userId: user.userId,
     username: user.username,
     name: user.name,
-    password: '',
     role: (user.roles || []).map(roleName => ({ roleName }))
   };
 }
@@ -77,13 +76,20 @@ export class UsersService {
     return false;
   }
 
-  // GET /admin/users est paginé côté backend (Page<UserResponse>).
+  // Liste complète, pour les écrans qui recoupent les utilisateurs (emprunts,
+  // réservations). GET /admin/users est paginé côté backend (Page<UserResponse>).
   getUsersList(): Observable<Users[]> {
     return this.httpClient.get<Page<UserListItem>>(this.baseURL, { params: { size: LIST_PAGE_SIZE } })
       .pipe(map(page => page.content.map(toUsers)));
   }
 
-  createUser(user: CreateUserRequest | Users): Observable<Object> {
+  // Tableau paginé de la liste des utilisateurs : une seule page à la fois.
+  getUsersPage(page: number, size: number = DEFAULT_PAGE_SIZE): Observable<Page<Users>> {
+    return this.httpClient.get<Page<UserListItem>>(this.baseURL, { params: { page, size } })
+      .pipe(map(resultat => ({ ...resultat, content: resultat.content.map(toUsers) })));
+  }
+
+  createUser(user: CreateUserRequest): Observable<Object> {
     return this.httpClient.post(`${this.baseURL}`, user);
   }
 
@@ -91,16 +97,19 @@ export class UsersService {
     return this.httpClient.get<UserListItem>(`${this.baseURL}/${userId}`).pipe(map(toUsers));
   }
 
-  updateUser(userId: number, user: Users): Observable<Object> {
-    // Le backend attend un UserCreateRequest : rôles en liste de noms, et
-    // mot de passe absent (pas vide, sinon @Size le rejette) pour le conserver.
+  /**
+   * Le backend attend un UserCreateRequest : rôles en liste de noms, et mot
+   * de passe absent (pas vide, sinon @Size le rejette) pour le conserver. Un
+   * nouveau mot de passe se passe à part : il ne fait pas partie du modèle Users.
+   */
+  updateUser(userId: number, user: Users, newPassword?: string): Observable<Object> {
     const body: Partial<CreateUserRequest> = {
       username: user.username,
       name: user.name,
       roles: (user.role || []).map(r => r.roleName)
     };
-    if (user.password) {
-      body.password = user.password;
+    if (newPassword) {
+      body.password = newPassword;
     }
     return this.httpClient.put(`${this.baseURL}/${userId}`, body);
   }

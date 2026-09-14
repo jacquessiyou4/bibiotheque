@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { BehaviorSubject, Observable } from 'rxjs';
 import { Lang, TRANSLATIONS } from '../_i18n/translations';
 
 const STORAGE_KEY = 'lang';
@@ -7,6 +8,14 @@ const STORAGE_KEY = 'lang';
   providedIn: 'root'
 })
 export class TranslationService {
+
+  private readonly langSubject = new BehaviorSubject<Lang>(this.getLang());
+
+  /**
+   * Émet la langue à chaque changement. Les composants sont en OnPush : le
+   * pipe translate s'y abonne pour redessiner leur vue quand la langue change.
+   */
+  readonly lang$: Observable<Lang> = this.langSubject.asObservable();
 
   getLang(): Lang {
     try {
@@ -23,6 +32,7 @@ export class TranslationService {
       // localStorage indisponible : la langue reste appliquée pour la
       // session en cours, simplement pas mémorisée.
     }
+    this.langSubject.next(lang);
   }
 
   toggleLang(): void {

@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { By } from '@angular/platform-browser';
 import { of, throwError } from 'rxjs';
@@ -72,6 +73,8 @@ describe('BookDetailsComponent', () => {
       { borrowId: 1, bookId: 1, userId: 2, issueDate: '01-09-2026', returnDate: null, dueDate: '08-09-2026' },
       { borrowId: 2, bookId: 1, userId: 3, issueDate: '02-09-2026', returnDate: '05-09-2026', dueDate: '09-09-2026' },
     ] as Borrow[];
+    // OnPush : une donnée modifiée hors du composant ne marque pas sa vue.
+    fixture.componentRef.injector.get(ChangeDetectorRef).markForCheck();
     fixture.detectChanges();
 
     const lignes = fixture.debugElement.queryAll(By.css('tbody tr'));
@@ -79,6 +82,17 @@ describe('BookDetailsComponent', () => {
     expect(lignes[0].nativeElement.textContent).toContain('history.notReturned');
     expect(lignes[1].nativeElement.textContent).toContain('05-09-2026');
     expect(lignes[1].nativeElement.textContent).not.toContain('history.notReturned');
+  });
+
+  it('affiche l’historique reçu du service sans intervention (OnPush)', () => {
+    borrowServiceSpy.getBookBorrowHistory.and.returnValue(of([
+      { borrowId: 3, bookId: 1, userId: 2, issueDate: '03-09-2026', returnDate: null, dueDate: '10-09-2026' }
+    ] as Borrow[]));
+
+    const autre = TestBed.createComponent(BookDetailsComponent);
+    autre.detectChanges();
+
+    expect(autre.debugElement.queryAll(By.css('tbody tr')).length).toBe(1);
   });
 
   it('signale une erreur si le livre ne peut pas être chargé', () => {

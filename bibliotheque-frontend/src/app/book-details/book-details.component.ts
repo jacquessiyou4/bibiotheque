@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -13,7 +13,8 @@ import { UsersService } from '../_service/users.service';
 @Component({
   selector: 'app-book-details',
   templateUrl: './book-details.component.html',
-  styleUrls: ['./book-details.component.css']
+  styleUrls: ['./book-details.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class BookDetailsComponent implements OnInit, OnDestroy {
 
@@ -28,19 +29,24 @@ export class BookDetailsComponent implements OnInit, OnDestroy {
     private bookService: BooksService,
     private borrowService: BorrowService,
     private notificationService: NotificationService,
-    public userService: UsersService
+    public userService: UsersService,
+    private cdr: ChangeDetectorRef
   ) { }
 
   ngOnInit(): void {
     this.id = this.route.snapshot.params['bookId'];
     this.book = new Books();
     this.bookService.getBookById(this.id).pipe(takeUntil(this.destroy$)).subscribe({
-      next: (data) => this.book = data,
+      next: (data) => {
+        this.book = data;
+        // OnPush : une réponse HTTP ne marque pas la vue comme modifiée.
+        this.cdr.markForCheck();
+      },
       error: () => this.notificationService.showError('Erreur de chargement du livre')
     })
 
     this.getBorrowHistory(this.id);
-    
+
   }
 
   ngOnDestroy(): void {
@@ -50,7 +56,10 @@ export class BookDetailsComponent implements OnInit, OnDestroy {
 
   private getBorrowHistory(bookId: number) {
     this.borrowService.getBookBorrowHistory(bookId).pipe(takeUntil(this.destroy$)).subscribe({
-      next: (data) => this.borrow = data,
+      next: (data) => {
+        this.borrow = data;
+        this.cdr.markForCheck();
+      },
       error: () => this.notificationService.showError('Erreur de chargement de l\'historique')
     });
   }
@@ -60,7 +69,11 @@ export class BookDetailsComponent implements OnInit, OnDestroy {
       return this.user.name;
     }
     this.userService.getUserById(userId).pipe(takeUntil(this.destroy$)).subscribe({
-      next: (data) => this.user = data,
+      next: (data) => {
+        this.user = data;
+        // Appelée depuis le template : le nom s'affichera au prochain rendu.
+        this.cdr.markForCheck();
+      },
       error: () => this.notificationService.showError('Erreur de chargement de l\'utilisateur')
     });
     return '';

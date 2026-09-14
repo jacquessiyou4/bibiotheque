@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -9,7 +9,8 @@ import { NotificationService } from '../_service/notification.service';
 @Component({
   selector: 'app-update-book',
   templateUrl: './update-book.component.html',
-  styleUrls: ['./update-book.component.css']
+  styleUrls: ['./update-book.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class UpdateBookComponent implements OnInit, OnDestroy {
 
@@ -20,12 +21,17 @@ export class UpdateBookComponent implements OnInit, OnDestroy {
   constructor(private booksService: BooksService,
     private notificationService: NotificationService,
     private route: ActivatedRoute,
-    private router: Router) { }
+    private router: Router,
+    private cdr: ChangeDetectorRef) { }
 
   ngOnInit(): void {
     this.bookId = this.route.snapshot.params['bookId'];
     this.booksService.getBookById(this.bookId).pipe(takeUntil(this.destroy$)).subscribe({
-      next: (data) => this.book = data,
+      next: (data) => {
+        this.book = data;
+        // OnPush : une réponse HTTP ne marque pas la vue comme modifiée.
+        this.cdr.markForCheck();
+      },
       error: () => this.notificationService.showError('Erreur de chargement du livre')
     })
   }

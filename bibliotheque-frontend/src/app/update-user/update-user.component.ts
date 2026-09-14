@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -9,7 +9,8 @@ import { UsersService } from '../_service/users.service';
 @Component({
   selector: 'app-update-user',
   templateUrl: './update-user.component.html',
-  styleUrls: ['./update-user.component.css']
+  styleUrls: ['./update-user.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class UpdateUserComponent implements OnInit, OnDestroy {
 
@@ -22,7 +23,8 @@ export class UpdateUserComponent implements OnInit, OnDestroy {
   constructor(private usersService: UsersService,
     private notificationService: NotificationService,
     private route: ActivatedRoute,
-    private router: Router) { }
+    private router: Router,
+    private cdr: ChangeDetectorRef) { }
 
   ngOnInit(): void {
     this.userId = +this.route.snapshot.params['userId'];
@@ -33,6 +35,8 @@ export class UpdateUserComponent implements OnInit, OnDestroy {
         if (data.role && data.role.length) {
           this.selectedRole = data.role[0].roleName;
         }
+        // OnPush : une réponse HTTP ne marque pas la vue comme modifiée.
+        this.cdr.markForCheck();
       },
       error: () => this.notificationService.showError('Erreur de chargement de l\'utilisateur')
     })

@@ -23,7 +23,6 @@ describe('UpdateUserComponent', () => {
     userId: 1,
     username: 'john',
     name: 'John Doe',
-    password: 'secret',
     role: [{ roleName: 'ADHERENT' }]
   };
 

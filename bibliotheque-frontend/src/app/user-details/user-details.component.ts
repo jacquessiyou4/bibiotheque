@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -13,7 +13,8 @@ import { UsersService } from '../_service/users.service';
 @Component({
   selector: 'app-user-details',
   templateUrl: './user-details.component.html',
-  styleUrls: ['./user-details.component.css']
+  styleUrls: ['./user-details.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class UserDetailsComponent implements OnInit, OnDestroy {
 
@@ -28,19 +29,24 @@ export class UserDetailsComponent implements OnInit, OnDestroy {
     private bookService: BooksService,
     private borrowService: BorrowService,
     private notificationService: NotificationService,
-    public userService: UsersService
+    public userService: UsersService,
+    private cdr: ChangeDetectorRef
   ) { }
 
   ngOnInit(): void {
     this.id = +this.route.snapshot.params['userId'];
     this.user = new Users();
     this.userService.getUserById(this.id).pipe(takeUntil(this.destroy$)).subscribe({
-      next: (data) => this.user = data,
+      next: (data) => {
+        this.user = data;
+        // OnPush : une réponse HTTP ne marque pas la vue comme modifiée.
+        this.cdr.markForCheck();
+      },
       error: () => this.notificationService.showError('Erreur de chargement de l\'utilisateur')
     })
 
     this.getBorrowedByUser(this.id);
-    
+
   }
 
   ngOnDestroy(): void {
@@ -50,7 +56,10 @@ export class UserDetailsComponent implements OnInit, OnDestroy {
 
   private getBorrowedByUser(userId: number) {
     this.borrowService.getBooksBorrowedByUser(userId).pipe(takeUntil(this.destroy$)).subscribe({
-      next: (data) => this.borrow = data,
+      next: (data) => {
+        this.borrow = data;
+        this.cdr.markForCheck();
+      },
       error: () => this.notificationService.showError('Erreur de chargement des emprunts')
     });
   }

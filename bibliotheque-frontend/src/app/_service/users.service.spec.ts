@@ -4,6 +4,7 @@ import { NgForm } from '@angular/forms';
 import { UsersService } from './users.service';
 import { UserAuthService } from './user-auth.service';
 import { Users } from '../_model/users';
+import { Page } from '../_model/page';
 import { Profile, TokenResponse } from '../_model/auth';
 
 describe('UsersService', () => {
@@ -104,7 +105,7 @@ describe('UsersService', () => {
       expect(profil!.name).toBe('Adhérent Un');
     });
 
-    it('getUsersList demande une page complète et convertit les rôles en objets', () => {
+    it('getUsersList demande une page complète et convertit les rôles en objets, sans mot de passe', () => {
       let utilisateurs: Users[] = [];
       service.getUsersList().subscribe(u => utilisateurs = u);
 
@@ -118,7 +119,7 @@ describe('UsersService', () => {
       expect(utilisateurs.length).toBe(1);
       expect(utilisateurs[0].username).toBe('a1');
       expect(utilisateurs[0].role).toEqual([{ roleName: 'User' }, { roleName: 'ADHERENT' }]);
-      expect(utilisateurs[0].password).toBe('');
+      expect('password' in utilisateurs[0]).toBeFalse();
     });
 
     it('getUsersList tolère un utilisateur sans rôles', () => {
@@ -131,6 +132,20 @@ describe('UsersService', () => {
       });
 
       expect(utilisateurs[0].role).toEqual([]);
+    });
+
+    it('getUsersPage demande une seule page et convertit son contenu', () => {
+      let resultat: Page<Users> | undefined;
+      service.getUsersPage(2).subscribe(p => resultat = p);
+
+      httpMock.expectOne(`${API}/admin/users?page=2&size=10`).flush({
+        content: [{ userId: 21, username: 'u21', name: 'U21', roles: ['User'] }],
+        totalElements: 21, totalPages: 3, number: 2, size: 10
+      });
+
+      expect(resultat!.number).toBe(2);
+      expect(resultat!.totalPages).toBe(3);
+      expect(resultat!.content[0].role).toEqual([{ roleName: 'User' }]);
     });
 
     it('getUserById appelle GET /admin/users/{id} et convertit la réponse', () => {
@@ -157,7 +172,7 @@ describe('UsersService', () => {
 
     it('updateUser sans nouveau mot de passe n’envoie pas le champ password', () => {
       const utilisateur: Users = {
-        userId: 3, username: 'a2', name: 'Nom Modifié', password: '', role: [{ roleName: 'Admin' }]
+        userId: 3, username: 'a2', name: 'Nom Modifié', role: [{ roleName: 'Admin' }]
       };
       service.updateUser(3, utilisateur).subscribe();
 
@@ -169,10 +184,8 @@ describe('UsersService', () => {
     });
 
     it('updateUser avec un nouveau mot de passe l’envoie au backend', () => {
-      const utilisateur: Users = {
-        userId: 3, username: 'a2', name: 'A2', password: 'nouveau-secret', role: []
-      };
-      service.updateUser(3, utilisateur).subscribe();
+      const utilisateur: Users = { userId: 3, username: 'a2', name: 'A2', role: [] };
+      service.updateUser(3, utilisateur, 'nouveau-secret').subscribe();
 
       const req = httpMock.expectOne(`${API}/admin/users/3`);
       expect(req.request.body.password).toBe('nouveau-secret');

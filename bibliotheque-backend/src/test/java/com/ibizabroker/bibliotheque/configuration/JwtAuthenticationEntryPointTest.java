@@ -26,9 +26,7 @@ class JwtAuthenticationEntryPointTest {
 
     @BeforeEach
     void setUp() {
-        entryPoint = new JwtAuthenticationEntryPoint();
-        org.springframework.test.util.ReflectionTestUtils.setField(
-                entryPoint, "objectMapper", new ObjectMapper());
+        entryPoint = new JwtAuthenticationEntryPoint(new ObjectMapper());
         request = new MockHttpServletRequest("GET", "/api/reservations");
         response = new MockHttpServletResponse();
     }

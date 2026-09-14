@@ -233,6 +233,26 @@ services:
     container_name: bibliotheque-caddy
     restart: unless-stopped
     profiles: ["https"]
+    # Seul service exposé sur Internet quand le profile https est actif :
+    # même durcissement que les autres, plus NET_BIND_SERVICE pour écouter
+    # sur 80/443 (ports < 1024).
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+    healthcheck:
+      # API d'administration de Caddy (écoute sur 127.0.0.1:2019 dans le conteneur).
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:2019/config/ > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     ports:
       - "80:80"
       - "443:443"

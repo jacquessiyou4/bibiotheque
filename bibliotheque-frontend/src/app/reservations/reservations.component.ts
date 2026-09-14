@@ -1,10 +1,10 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { Books } from '../_model/books';
 import { Users } from '../_model/users';
-import { Reservation, ReservationRequest, StatutReservation } from '../_model/reservation';
+import { Reservation, ReservationRequest, ReservationStatus } from '../_model/reservation';
 import { ReservationService } from '../_service/reservation.service';
 import { BooksService } from '../_service/books.service';
 import { UsersService } from '../_service/users.service';
@@ -14,12 +14,13 @@ import { TranslationService } from '../_service/translation.service';
 type EtatEcran = 'chargement' | 'donnees' | 'vide' | 'erreur';
 type Onglet = 'toutes' | 'expirees';
 
-const STATUTS: StatutReservation[] = ['EN_ATTENTE', 'DISPONIBLE', 'ANNULEE', 'EXPIREE', 'HONOREE'];
+const STATUTS: ReservationStatus[] = ['EN_ATTENTE', 'DISPONIBLE', 'ANNULEE', 'EXPIREE', 'HONOREE'];
 
 @Component({
   selector: 'app-reservations',
   templateUrl: './reservations.component.html',
-  styleUrls: ['./reservations.component.css']
+  styleUrls: ['./reservations.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ReservationsComponent implements OnInit, OnDestroy {
 
@@ -29,7 +30,7 @@ export class ReservationsComponent implements OnInit, OnDestroy {
 
   etat: EtatEcran = 'chargement';
   reservations: Reservation[] = [];
-  filtreStatut: StatutReservation | '' = '';
+  filtreStatut: ReservationStatus | '' = '';
   onglet: Onglet = 'toutes';
 
   livres: Books[] = [];
@@ -53,7 +54,8 @@ export class ReservationsComponent implements OnInit, OnDestroy {
     private booksService: BooksService,
     private usersService: UsersService,
     private userAuthService: UserAuthService,
-    private translationService: TranslationService
+    private translationService: TranslationService,
+    private cdr: ChangeDetectorRef
   ) { }
 
   /**
@@ -90,13 +92,15 @@ export class ReservationsComponent implements OnInit, OnDestroy {
   chargerReservations(): void {
     this.etat = 'chargement';
     const statut = this.filtreStatut || undefined;
-    this.reservationService.getReservations(statut as StatutReservation | undefined).pipe(takeUntil(this.destroy$)).subscribe({
+    this.reservationService.getReservations(statut as ReservationStatus | undefined).pipe(takeUntil(this.destroy$)).subscribe({
       next: (data) => {
         this.reservations = data;
         this.etat = data.length === 0 ? 'vide' : 'donnees';
+        this.rafraichir();
       },
       error: () => {
         this.etat = 'erreur';
+        this.rafraichir();
       }
     });
   }
@@ -106,8 +110,14 @@ export class ReservationsComponent implements OnInit, OnDestroy {
       // Le dropdown liste tous les livres, disponibles inclus : c'est ce qui
       // permet de déclencher volontairement le 409 RG-01 (voir passage devant
       // le formateur, séance 3).
-      next: (livres) => this.livres = livres || [],
-      error: () => this.livres = []
+      next: (livres) => {
+        this.livres = livres || [];
+        this.rafraichir();
+      },
+      error: () => {
+        this.livres = [];
+        this.rafraichir();
+      }
     });
 
     // Seul un BIBLIOTHECAIRE choisit l'adhérent ; un ADHERENT réserve
@@ -118,9 +128,15 @@ export class ReservationsComponent implements OnInit, OnDestroy {
     }
 
     this.usersService.getUsersList().pipe(takeUntil(this.destroy$)).subscribe({
-      next: (users) => this.adherents = (users || []).filter(
-        (u) => u.role && u.role.some((r) => r.roleName === 'User')),
-      error: () => this.adherents = []
+      next: (users) => {
+        this.adherents = (users || []).filter(
+          (u) => u.role && u.role.some((r) => r.roleName === 'User'));
+        this.rafraichir();
+      },
+      error: () => {
+        this.adherents = [];
+        this.rafraichir();
+      }
     });
   }
 
@@ -141,10 +157,12 @@ export class ReservationsComponent implements OnInit, OnDestroy {
         this.creationEnCours = false;
         this.resetFormulaire++;
         this.chargerReservations();
+        this.rafraichir();
       },
       error: (err: HttpErrorResponse) => {
         this.creationEnCours = false;
         this.erreurFormulaire = this.messageErreur(err, 'La création de la réservation a échoué.');
+        this.rafraichir();
       }
     });
   }
@@ -156,10 +174,12 @@ export class ReservationsComponent implements OnInit, OnDestroy {
       next: () => {
         this.annulationEnCoursId = null;
         this.chargerReservations();
+        this.rafraichir();
       },
       error: (err: HttpErrorResponse) => {
         this.annulationEnCoursId = null;
         this.erreurAnnulation = this.messageErreur(err, "L'annulation a échoué.");
+        this.rafraichir();
       }
     });
   }
@@ -179,10 +199,12 @@ export class ReservationsComponent implements OnInit, OnDestroy {
         this.suppressionEnCoursId = null;
         this.chargerReservations();
         this.chargerExpirees();
+        this.rafraichir();
       },
       error: (err: HttpErrorResponse) => {
         this.suppressionEnCoursId = null;
         this.erreurSuppression = this.messageErreur(err, "La suppression a échoué.");
+        this.rafraichir();
       }
     });
   }
@@ -193,11 +215,18 @@ export class ReservationsComponent implements OnInit, OnDestroy {
       next: (data) => {
         this.reservationsExpirees = data;
         this.etatExpirees = data.length === 0 ? 'vide' : 'donnees';
+        this.rafraichir();
       },
       error: () => {
         this.etatExpirees = 'erreur';
+        this.rafraichir();
       }
     });
+  }
+
+  /** OnPush : une réponse HTTP ne marque pas la vue comme modifiée. */
+  private rafraichir(): void {
+    this.cdr.markForCheck();
   }
 
   private messageErreur(err: HttpErrorResponse, repli: string): string {

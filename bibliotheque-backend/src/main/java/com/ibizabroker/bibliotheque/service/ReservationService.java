@@ -7,7 +7,7 @@ import com.ibizabroker.bibliotheque.dto.ReservationRequest;
 import com.ibizabroker.bibliotheque.dto.ReservationResponse;
 import com.ibizabroker.bibliotheque.entity.Books;
 import com.ibizabroker.bibliotheque.entity.Reservation;
-import com.ibizabroker.bibliotheque.entity.StatutReservation;
+import com.ibizabroker.bibliotheque.entity.ReservationStatus;
 import com.ibizabroker.bibliotheque.entity.Users;
 import com.ibizabroker.bibliotheque.exceptions.BadRequestException;
 import com.ibizabroker.bibliotheque.exceptions.ConflictException;
@@ -28,8 +28,8 @@ public class ReservationService {
 
     private static final Logger log = LoggerFactory.getLogger(ReservationService.class);
 
-    private static final List<StatutReservation> STATUTS_ACTIFS =
-            Arrays.asList(StatutReservation.EN_ATTENTE, StatutReservation.DISPONIBLE);
+    private static final List<ReservationStatus> STATUTS_ACTIFS =
+            Arrays.asList(ReservationStatus.EN_ATTENTE, ReservationStatus.DISPONIBLE);
 
     private static final long MAX_RESERVATIONS_ACTIVES = 3;
 
@@ -93,7 +93,7 @@ public class ReservationService {
         reservation.setAdherent(adherent);
         reservation.setDateReservation(maintenant);
         reservation.setDateExpiration(maintenant.plusDays(7));
-        reservation.setStatut(StatutReservation.EN_ATTENTE);
+        reservation.setStatut(ReservationStatus.EN_ATTENTE);
 
         Reservation saved = reservationRepository.save(reservation);
         return versDto(saved);
@@ -104,7 +104,7 @@ public class ReservationService {
      * même s'il tente de filtrer via adherentId. Un BIBLIOTHECAIRE peut
      * tout voir et filtrer par adhérent.
      */
-    public List<ReservationResponse> lister(StatutReservation statut, Integer adherentId,
+    public List<ReservationResponse> lister(ReservationStatus statut, Integer adherentId,
                                             boolean estBibliothecaire, String usernameConnecte) {
         List<Reservation> reservations;
         if (!estBibliothecaire) {
@@ -133,7 +133,7 @@ public class ReservationService {
     }
 
     public List<ReservationResponse> listerExpirees() {
-        return reservationRepository.findByStatut(StatutReservation.EXPIREE).stream()
+        return reservationRepository.findByStatut(ReservationStatus.EXPIREE).stream()
                 .map(this::versDto)
                 .collect(Collectors.toList());
     }
@@ -145,7 +145,7 @@ public class ReservationService {
         if (!aExpirer.isEmpty()) {
             log.info("Expiration de {} réservation(s) dépassées", aExpirer.size());
         }
-        aExpirer.forEach(r -> r.setStatut(StatutReservation.EXPIREE));
+        aExpirer.forEach(r -> r.setStatut(ReservationStatus.EXPIREE));
         reservationRepository.saveAll(aExpirer);
     }
 
@@ -162,7 +162,7 @@ public class ReservationService {
                     + ", seules EN_ATTENTE ou DISPONIBLE peuvent être annulées.");
         }
 
-        reservation.setStatut(StatutReservation.ANNULEE);
+        reservation.setStatut(ReservationStatus.ANNULEE);
         Reservation saved = reservationRepository.save(reservation);
         return versDto(saved);
     }

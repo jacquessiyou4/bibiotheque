@@ -24,7 +24,6 @@ describe('UserDetailsComponent', () => {
     userId: 1,
     username: 'john',
     name: 'John Doe',
-    password: '',
     role: [{ roleName: 'ADHERENT' }]
   };
 

@@ -30,5 +30,5 @@ public class Reservation {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private StatutReservation statut;
+    private ReservationStatus statut;
 }

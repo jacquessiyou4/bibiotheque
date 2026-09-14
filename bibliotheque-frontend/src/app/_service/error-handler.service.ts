@@ -1,4 +1,4 @@
-import { ErrorHandler, Injectable, Injector } from '@angular/core';
+import { ErrorHandler, Injectable, Injector, isDevMode } from '@angular/core';
 import { NotificationService } from './notification.service';
 
 /**
@@ -10,8 +10,11 @@ export class AppErrorHandler implements ErrorHandler {
   constructor(private injector: Injector) {}
 
   handleError(error: any): void {
-    // Garder la trace en console : sans cela un bug de code est invisible.
-    console.error(error);
+    // Trace en console en développement seulement : en production, l'objet
+    // d'erreur (réponse HTTP, données métier) ne doit pas fuiter dans la console.
+    if (isDevMode()) {
+      console.error(error);
+    }
     const notification = this.injector.get(NotificationService);
     const status = error?.status;
 

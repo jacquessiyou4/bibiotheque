@@ -2,7 +2,7 @@ package com.ibizabroker.bibliotheque.controller;
 
 import com.ibizabroker.bibliotheque.dto.ReservationRequest;
 import com.ibizabroker.bibliotheque.dto.ReservationResponse;
-import com.ibizabroker.bibliotheque.entity.StatutReservation;
+import com.ibizabroker.bibliotheque.entity.ReservationStatus;
 import com.ibizabroker.bibliotheque.service.ReservationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -43,6 +43,8 @@ public class ReservationController {
                                                      @RequestBody ReservationRequest request) {
         ReservationResponse response = reservationService.creer(request,
                 estBibliothecaire(authentication), authentication.getName());
+        log.info("[RESERVATION] Création - id={} - livre={} - adhérent={} - par {}",
+                response.getId(), response.getLivreId(), response.getAdherentId(), authentication.getName());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -53,7 +55,7 @@ public class ReservationController {
     @GetMapping
     @PreAuthorize("hasAnyRole('ADHERENT', 'BIBLIOTHECAIRE')")
     public ResponseEntity<List<ReservationResponse>> lister(Authentication authentication,
-            @RequestParam(required = false) StatutReservation statut,
+            @RequestParam(required = false) ReservationStatus statut,
             @RequestParam(required = false) Integer adherentId) {
         return ResponseEntity.ok(reservationService.lister(statut, adherentId,
                 estBibliothecaire(authentication), authentication.getName()));
@@ -94,8 +96,10 @@ public class ReservationController {
     @PreAuthorize("hasAnyRole('ADHERENT', 'BIBLIOTHECAIRE')")
     public ResponseEntity<ReservationResponse> annuler(Authentication authentication,
                                                        @PathVariable Integer id) {
-        return ResponseEntity.ok(reservationService.annuler(id,
-                estBibliothecaire(authentication), authentication.getName()));
+        ReservationResponse response = reservationService.annuler(id,
+                estBibliothecaire(authentication), authentication.getName());
+        log.info("[RESERVATION] Annulation - id={} - par {}", id, authentication.getName());
+        return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "Supprimer une réservation (bibliothécaire uniquement)")
@@ -106,8 +110,9 @@ public class ReservationController {
     })
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('BIBLIOTHECAIRE')")
-    public ResponseEntity<Void> supprimer(@PathVariable Integer id) {
+    public ResponseEntity<Void> supprimer(Authentication authentication, @PathVariable Integer id) {
         reservationService.supprimer(id);
+        log.info("[RESERVATION] Suppression - id={} - par {}", id, authentication.getName());
         return ResponseEntity.noContent().build();
     }
 

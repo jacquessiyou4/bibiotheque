@@ -10,6 +10,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
@@ -51,25 +52,37 @@ public class BooksController {
     @Operation(summary = "Créer un nouveau livre")
     @PreAuthorize("hasRole('Admin')")
     @PostMapping("/books")
-    public BookResponse createBook(@Valid @RequestBody Books book) {
-        return toBookResponse(booksService.create(book));
+    public BookResponse createBook(Authentication authentication, @Valid @RequestBody Books book) {
+        Books cree = booksService.create(book);
+        log.info("[LIVRE] Création - id={} - titre='{}' - par {}",
+                cree.getBookId(), cree.getBookName(), utilisateur(authentication));
+        return toBookResponse(cree);
     }
 
     @Operation(summary = "Modifier un livre existant")
     @PreAuthorize("hasRole('Admin')")
     @PutMapping("/books/{id}")
-    public ResponseEntity<BookResponse> updateBook(@PathVariable Integer id, @Valid @RequestBody Books bookDetails) {
-        return ResponseEntity.ok(toBookResponse(booksService.update(id, bookDetails)));
+    public ResponseEntity<BookResponse> updateBook(Authentication authentication, @PathVariable Integer id,
+                                                   @Valid @RequestBody Books bookDetails) {
+        Books modifie = booksService.update(id, bookDetails);
+        log.info("[LIVRE] Modification - id={} - exemplaires={} - par {}",
+                id, modifie.getNoOfCopies(), utilisateur(authentication));
+        return ResponseEntity.ok(toBookResponse(modifie));
     }
 
     @Operation(summary = "Supprimer un livre")
     @PreAuthorize("hasRole('Admin')")
     @DeleteMapping("/books/{id}")
-    public ResponseEntity<Map<String, Boolean>> deleteBook(@PathVariable Integer id) {
+    public ResponseEntity<Map<String, Boolean>> deleteBook(Authentication authentication, @PathVariable Integer id) {
         booksService.delete(id);
+        log.info("[LIVRE] Suppression - id={} - par {}", id, utilisateur(authentication));
         Map<String, Boolean> response = new HashMap<>();
         response.put("deleted", Boolean.TRUE);
         return ResponseEntity.ok(response);
+    }
+
+    private String utilisateur(Authentication authentication) {
+        return authentication != null ? authentication.getName() : "anonyme";
     }
 
     private BookResponse toBookResponse(Books book) {

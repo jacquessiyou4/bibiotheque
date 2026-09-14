@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { Reservation, ReservationRequest, StatutReservation } from '../_model/reservation';
+import { Reservation, ReservationRequest, ReservationStatus } from '../_model/reservation';
 import { apiUrl } from './api-config';
 
 @Injectable({
@@ -13,7 +13,7 @@ export class ReservationService {
 
   constructor(private httpClient: HttpClient) { }
 
-  getReservations(statut?: StatutReservation, adherentId?: number): Observable<Reservation[]> {
+  getReservations(statut?: ReservationStatus, adherentId?: number): Observable<Reservation[]> {
     let params: { statut?: string; adherentId?: number } = {};
     if (statut) { params.statut = statut; }
     if (adherentId) { params.adherentId = adherentId; }

@@ -7,5 +7,11 @@ export interface Page<T> {
     size: number;
 }
 
-/** Taille demandée pour les listes affichées en entier (catalogue, utilisateurs). */
+/**
+ * Taille demandée quand une liste complète est nécessaire (menus de
+ * sélection, recoupements entre livres, utilisateurs et emprunts).
+ */
 export const LIST_PAGE_SIZE = 1000;
+
+/** Taille d'une page dans les tableaux paginés (livres, utilisateurs). */
+export const DEFAULT_PAGE_SIZE = 10;

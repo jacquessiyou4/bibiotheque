@@ -99,7 +99,14 @@ class UsersAdminApiIntegrationTest {
         when(usersRepository.findAll(any(Pageable.class)))
                 .thenReturn(new PageImpl<>(Arrays.asList(adherent, bibliothecaire)));
         when(usersRepository.findById(1)).thenReturn(Optional.of(adherent));
-        when(usersRepository.save(any(Users.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        // Comme la base : un utilisateur créé reçoit un identifiant à l'enregistrement.
+        when(usersRepository.save(any(Users.class))).thenAnswer(invocation -> {
+            Users user = invocation.getArgument(0);
+            if (user.getUserId() == null) {
+                user.setUserId(99);
+            }
+            return user;
+        });
 
         when(jwtDecoder.decode(any(String.class))).thenAnswer(invocation -> {
             String token = invocation.getArgument(0);
@@ -208,7 +215,7 @@ class UsersAdminApiIntegrationTest {
                                 + "\"password\":\"mot-de-passe-clair\",\"roles\":[]}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value("nouveau"))
-                // @JsonIgnore : le hash n'est jamais renvoyé au client.
+                // Réponse UserResponse (DTO) : le hash n'est jamais renvoyé au client.
                 .andExpect(jsonPath("$.password").doesNotExist());
 
         ArgumentCaptor<Users> sauvegarde = ArgumentCaptor.forClass(Users.class);

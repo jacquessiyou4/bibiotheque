@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -6,10 +6,13 @@ import { CreateUserRequest } from '../_model/users';
 import { NotificationService } from '../_service/notification.service';
 import { UsersService } from '../_service/users.service';
 
+// OnPush sans markForCheck : la vue ne change qu'à la saisie et aux clics,
+// les réponses HTTP naviguent ou passent par les notifications.
 @Component({
   selector: 'app-registration',
   templateUrl: './registration.component.html',
-  styleUrls: ['./registration.component.css']
+  styleUrls: ['./registration.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class RegistrationComponent implements OnInit, OnDestroy {
 

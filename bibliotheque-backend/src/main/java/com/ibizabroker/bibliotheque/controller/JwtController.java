@@ -32,7 +32,10 @@ public class JwtController {
         this.usersRepository = usersRepository;
     }
 
-    @Operation(summary = "Authentifier un utilisateur et obtenir un jeton JWT")
+    @Operation(summary = "Obsolète : ancien login local, jeton refusé par l'API",
+            description = "Le jeton renvoyé n'est pas accepté par les autres endpoints (seuls les jetons "
+                    + "Keycloak le sont). Pour tester l'API : bouton « Authorize » > keycloak.",
+            deprecated = true)
     @PostMapping("/authenticate")
     public JwtResponse createJwtToken(@RequestBody JwtRequest jwtRequest) throws Exception {
         return jwtService.createJwtToken(jwtRequest);

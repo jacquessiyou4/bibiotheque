@@ -48,7 +48,9 @@ public class OpenApiConfiguration {
                         .title("bibliothèque")
                         .description("API de gestion de bibliothèque. Pour tester : bouton « Authorize », "
                                 + "section « keycloak », saisir un compte (ex. admin / admin123 ou A1 / A1123), "
-                                + "laisser client_id = bibliotheque-frontend, sans client_secret."))
+                                + "laisser client_id = bibliotheque-frontend, sans client_secret. "
+                                + "Pour voir l'access token et le refresh token : POST /auth/token, "
+                                + "puis POST /auth/refresh quand l'access token expire."))
                 .components(new Components()
                         .addSecuritySchemes(KEYCLOAK_AUTH, new SecurityScheme()
                                 .type(SecurityScheme.Type.OAUTH2)

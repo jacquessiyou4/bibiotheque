@@ -2,10 +2,10 @@
   <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container-fluid">
       <a class="navbar-brand" style="color: rgb(241, 223, 223);" href="#">Library Management System</a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <!-- Pas de bouton « hamburger » : ni le JavaScript de Bootstrap ni son
+           module « transitions » (classe collapse) ne sont chargés, il ne
+           faisait rien. Sur écran étroit, le menu reste affiché. -->
+      <div class="navbar-collapse" id="navbarSupportedContent">
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
 
           <li class="nav-item">
@@ -40,23 +40,22 @@
             <a routerLink="/return-book" routerLinkActive="active" class="nav-link" *ngIf="userService.roleMatch(['User'])">{{ 'nav.returnBooks' | translate }}</a>
           </li>
 
-          <li class="nav-item right-text" *ngIf="isLoggedIn()">
-            <div class="nav-link disabled text-right">
-              <strong>
-                {{ 'nav.hey' | translate }} {{name}}
-              </strong>
-            </div>
-          </li>
-
         </ul>
-        <button type="button" class="btn btn-outline-light btn-sm me-2" (click)="toggleLang()">
-          {{ translationService.getLang() === 'en' ? '🇫🇷 FR' : '🇬🇧 EN' }}
-        </button>
-        <button type="button" class="btn btn-outline-light btn-sm me-2" (click)="toggleTheme()">
-          {{ themeService.getTheme() === 'dark' ? '☀️' : '🌙' }} {{ (themeService.getTheme() === 'dark' ? 'theme.toggleToLight' : 'theme.toggleToDark') | translate }}
-        </button>
-        <button *ngIf="!isLoggedIn()" type="button" class="btn btn-success" routerLink="/login">{{ 'nav.login' | translate }}</button>
-        <button *ngIf="isLoggedIn()" type="button" class="btn btn-danger" (click)="logout()">{{ 'nav.logout' | translate }}</button>
+        <!-- Salutation et boutons regroupés à droite : ils restent visibles
+             quelle que soit la longueur du menu (menu Admin compris). -->
+        <div class="d-flex align-items-center flex-wrap gap-2">
+          <span class="navbar-text right-text text-nowrap" *ngIf="isLoggedIn()">
+            <strong>{{ 'nav.hey' | translate }} {{name}}</strong>
+          </span>
+          <button type="button" class="btn btn-outline-light btn-sm text-nowrap" (click)="toggleLang()">
+            {{ translationService.getLang() === 'en' ? '🇫🇷 FR' : '🇬🇧 EN' }}
+          </button>
+          <button type="button" class="btn btn-outline-light btn-sm text-nowrap" (click)="toggleTheme()">
+            {{ themeService.getTheme() === 'dark' ? '☀️' : '🌙' }} {{ (themeService.getTheme() === 'dark' ? 'theme.toggleToLight' : 'theme.toggleToDark') | translate }}
+          </button>
+          <button *ngIf="!isLoggedIn()" type="button" class="btn btn-success text-nowrap" routerLink="/login">{{ 'nav.login' | translate }}</button>
+          <button *ngIf="isLoggedIn()" type="button" class="btn btn-danger text-nowrap" (click)="logout()">{{ 'nav.logout' | translate }}</button>
+        </div>
       </div>
     </div>
   </nav>

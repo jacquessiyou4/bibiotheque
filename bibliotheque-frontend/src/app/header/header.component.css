@@ -1,4 +1,10 @@
+/* Plus de « margin-left: 1000px » : cette marge poussait la salutation
+   (et les boutons FR / thème / Logout) hors de l'écran dès que le menu
+   Admin, plus long, était affiché. */
 .right-text {
-    margin-left: 1000px;
     font-size: 17px;
+}
+
+.navbar-nav .nav-link {
+    white-space: nowrap;
 }

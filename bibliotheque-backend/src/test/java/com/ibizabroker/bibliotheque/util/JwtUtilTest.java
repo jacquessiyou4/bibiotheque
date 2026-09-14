@@ -92,11 +92,17 @@ class JwtUtilTest {
 
     @Test
     void getClaimFromToken_permetDeLireUnClaimQuelconque() {
+        // Référence prise AVANT la génération, arrondie à la seconde (un JWT
+        // ne stocke pas les millisecondes). L'ancienne version comparait à
+        // « maintenant - 5 s » calculé après coup : sur une machine chargée,
+        // la génération dépassait 5 s et le test échouait sans raison.
+        Date avant = new Date((System.currentTimeMillis() / 1000) * 1000);
+
         String token = jwtUtil.generateToken(utilisateur);
 
         Date issuedAt = jwtUtil.getClaimFromToken(token, Claims::getIssuedAt);
 
         assertThat(issuedAt).isNotNull();
-        assertThat(issuedAt).isAfterOrEqualsTo(new Date(System.currentTimeMillis() - 5000));
+        assertThat(issuedAt).isAfterOrEqualsTo(avant).isBeforeOrEqualsTo(new Date());
     }
 }

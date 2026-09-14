@@ -1,7 +1,5 @@
 export interface EnvConfig {
   apiUrl?: string;
-  keycloakUrl?: string;
-  keycloakRealm?: string;
 }
 
 declare global {

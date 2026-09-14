@@ -1,7 +1,7 @@
 package com.ibizabroker.bibliotheque.exceptions;
 
 import com.ibizabroker.bibliotheque.configuration.SecurityAuditFilter;
-import com.ibizabroker.bibliotheque.entity.StatutReservation;
+import com.ibizabroker.bibliotheque.entity.ReservationStatus;
 import com.ibizabroker.bibliotheque.entity.Users;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -175,7 +175,7 @@ class GlobalExceptionHandlerTest {
     @Test
     void handleTypeMismatch_nommeLeParametreInvalide() {
         ResponseEntity<Map<String, String>> reponse = handler.handleTypeMismatch(
-                new MethodArgumentTypeMismatchException("INCONNU", StatutReservation.class, "statut", null, null));
+                new MethodArgumentTypeMismatchException("INCONNU", ReservationStatus.class, "statut", null, null));
 
         assertThat(reponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(reponse.getBody().get("message")).contains("statut");

@@ -130,6 +130,15 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'validation.name_required': 'Name is required (min 2 characters)',
     'validation.username_required': 'Username is required (min 3 characters)',
     'validation.password_minlength': 'Password must be at least 6 characters',
+    'validation.login_username_required': 'Username is required',
+    'validation.login_password_required': 'Password is required',
+    'validation.book_name_required': 'Book name is required (max 255 characters)',
+    'validation.book_author_required': 'Author is required',
+    'validation.copies_min': 'Number of copies is required and cannot be negative',
+
+    'pagination.previous': 'Previous',
+    'pagination.next': 'Next',
+    'pagination.page': 'Page',
   },
   fr: {
     'nav.bookList': 'Livres',
@@ -260,5 +269,14 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'validation.name_required': 'Le nom est obligatoire (min. 2 caractères)',
     'validation.username_required': "Le nom d'utilisateur est obligatoire (min. 3 caractères)",
     'validation.password_minlength': 'Le mot de passe doit contenir au moins 6 caractères',
+    'validation.login_username_required': "Le nom d'utilisateur est obligatoire",
+    'validation.login_password_required': 'Le mot de passe est obligatoire',
+    'validation.book_name_required': 'Le titre du livre est obligatoire (255 caractères max.)',
+    'validation.book_author_required': "L'auteur est obligatoire",
+    'validation.copies_min': 'Le nombre de copies est obligatoire et ne peut pas être négatif',
+
+    'pagination.previous': 'Précédent',
+    'pagination.next': 'Suivant',
+    'pagination.page': 'Page',
   },
 };

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { Books } from '../_model/books';
@@ -11,7 +11,8 @@ import { UserAuthService } from '../_service/user-auth.service';
 @Component({
   selector: 'app-borrow-book',
   templateUrl: './borrow-book.component.html',
-  styleUrls: ['./borrow-book.component.css']
+  styleUrls: ['./borrow-book.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class BorrowBookComponent implements OnInit, OnDestroy {
 
@@ -24,6 +25,7 @@ export class BorrowBookComponent implements OnInit, OnDestroy {
     private userAuthService: UserAuthService,
     private borrowService: BorrowService,
     private notificationService: NotificationService,
+    private cdr: ChangeDetectorRef
   ) { }
 
   userId = this.userAuthService.getUserId();
@@ -39,7 +41,11 @@ export class BorrowBookComponent implements OnInit, OnDestroy {
 
   private getBooks() {
     this.booksService.getBooksList().pipe(takeUntil(this.destroy$)).subscribe({
-      next: (data) => this.books = data,
+      next: (data) => {
+        this.books = data;
+        // OnPush : une réponse HTTP ne marque pas la vue comme modifiée.
+        this.cdr.markForCheck();
+      },
       error: () => this.notificationService.showError('Erreur de chargement des livres')
     });
   }

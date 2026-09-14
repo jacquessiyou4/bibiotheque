@@ -1,4 +1,4 @@
-import { Reservation, ReservationRequest, StatutReservation } from './reservation';
+import { Reservation, ReservationRequest, ReservationStatus } from './reservation';
 
 describe('ReservationModel', () => {
   it('instancie une réservation et mappe tous ses champs', () => {
@@ -23,7 +23,7 @@ describe('ReservationModel', () => {
   });
 
   it('expose les cinq statuts possibles d une réservation', () => {
-    const statuts: StatutReservation[] = ['EN_ATTENTE', 'DISPONIBLE', 'ANNULEE', 'EXPIREE', 'HONOREE'];
+    const statuts: ReservationStatus[] = ['EN_ATTENTE', 'DISPONIBLE', 'ANNULEE', 'EXPIREE', 'HONOREE'];
     const reservation = new Reservation();
     statuts.forEach((statut) => {
       reservation.statut = statut;

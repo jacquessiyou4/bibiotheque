@@ -23,7 +23,23 @@
 		     restent compatibles Java 8 (CI, Docker). -->
 		<lombok.version>1.18.36</lombok.version>
 		<byte-buddy.version>1.15.11</byte-buddy.version>
+		<!-- Tests de bout en bout (profil e2e) : Keycloak et PostgreSQL réels
+		     dans Docker. Ligne 1.x compatible Java 8 ; 1.21.4 minimum : les
+		     versions antérieures parlent l'API Docker 1.32, refusée par Docker 29+
+		     (« client version 1.32 is too old »). -->
+		<testcontainers.version>1.21.4</testcontainers.version>
 	</properties>
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.testcontainers</groupId>
+				<artifactId>testcontainers-bom</artifactId>
+				<version>${testcontainers.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -46,6 +62,12 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+		<!-- Registre Prometheus : sans lui, /actuator/prometheus (exposé dans
+		     application.properties) n'existe pas (404). Version gérée par Spring Boot. -->
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-registry-prometheus</artifactId>
 		</dependency>
 
 		<!-- Sécurité OIDC : le backend valide les jetons d'accès Keycloak
@@ -94,6 +116,16 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-ui</artifactId>
 			<!-- 1.5.13 : dernière de la ligne 1.5.x (compatible Spring Boot 2.4.5 / Java 8).
@@ -124,6 +156,34 @@
 							<goal>report</goal>
 						</goals>
 					</execution>
+					<!-- Seuil minimal vérifié par `mvn verify` (donc par le CI) : la
+					     couverture ne peut plus baisser en silence. Mesure au
+					     14/09/2026 : 95,1 % des lignes, 88,1 % des branches. -->
+					<execution>
+						<id>check</id>
+						<goals>
+							<goal>check</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<rule>
+									<element>BUNDLE</element>
+									<limits>
+										<limit>
+											<counter>LINE</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>0.90</minimum>
+										</limit>
+										<limit>
+											<counter>BRANCH</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>0.80</minimum>
+										</limit>
+									</limits>
+								</rule>
+							</rules>
+						</configuration>
+					</execution>
 				</executions>
 			</plugin>
 			<plugin>
@@ -140,6 +200,37 @@
 			</plugin>
 		</plugins>
 	</build>
+	<profiles>
+		<!-- Tests de bout en bout : ./mvnw -Pe2e verify (Docker requis).
+		     Les classes *IT démarrent un vrai Keycloak (realm
+		     ../keycloak/realm-bibliotheque.json) et un vrai PostgreSQL ; elles
+		     ne sont pas lancées par « mvn verify » sans profil (surefire
+		     n'exécute que les *Test). -->
+		<profile>
+			<id>e2e</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-failsafe-plugin</artifactId>
+						<configuration>
+							<includes>
+								<include>**/*IT.java</include>
+							</includes>
+						</configuration>
+						<executions>
+							<execution>
+								<goals>
+									<goal>integration-test</goal>
+									<goal>verify</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 	<repositories>
 		<repository>
 			<id>spring-milestones</id>

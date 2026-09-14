@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { Books } from '../_model/books'
+import { DEFAULT_PAGE_SIZE } from '../_model/page';
 import { BooksService } from '../_service/books.service';
 import { NotificationService } from '../_service/notification.service';
 
@@ -16,6 +17,10 @@ export class BooksListComponent implements OnInit, OnDestroy {
 
   private destroy$ = new Subject<void>();
   books: Books[] = [];
+  /** Numéro de page courant, à partir de 0 (comme Spring Data). */
+  page = 0;
+  totalPages = 0;
+  readonly pageSize = DEFAULT_PAGE_SIZE;
 
   constructor(
     private booksService: BooksService,
@@ -33,10 +38,24 @@ export class BooksListComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
+  goToPage(page: number) {
+    if (page < 0 || (this.totalPages > 0 && page >= this.totalPages)) {
+      return;
+    }
+    this.page = page;
+    this.getBooks();
+  }
+
   private getBooks() {
-    this.booksService.getBooksList().pipe(takeUntil(this.destroy$)).subscribe({
-      next: (data) => {
-        this.books = data;
+    this.booksService.getBooksPage(this.page, this.pageSize).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (resultat) => {
+        // Dernier livre d'une page supprimé : la page est vide, revenir à la précédente.
+        if (resultat.content.length === 0 && this.page > 0) {
+          this.goToPage(this.page - 1);
+          return;
+        }
+        this.books = resultat.content;
+        this.totalPages = resultat.totalPages;
         // OnPush : une réponse HTTP ne marque pas la vue comme modifiée.
         this.cdr.markForCheck();
       },

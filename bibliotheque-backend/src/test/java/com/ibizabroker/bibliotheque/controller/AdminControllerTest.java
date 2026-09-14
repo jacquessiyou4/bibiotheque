@@ -25,7 +25,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -60,27 +59,31 @@ class AdminControllerTest {
     void addUserByAdmin_usernameLibre_encodeLeMotDePasseEtCreeLesRoles() {
         when(usersRepository.findByUsername("nouveau")).thenReturn(Optional.empty());
         when(passwordEncoder.encode("secret1")).thenReturn("hash-bcrypt");
-        when(usersRepository.save(any(Users.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(usersRepository.save(any(Users.class))).thenAnswer(invocation -> enregistre(invocation.getArgument(0)));
 
-        Users cree = controller.addUserByAdmin(demande("nouveau", "Nouveau", "secret1", "Admin", "User"));
+        UserResponse cree = controller.addUserByAdmin(demande("nouveau", "Nouveau", "secret1", "Admin", "User"));
 
+        assertThat(cree.getUserId()).isEqualTo(10L);
         assertThat(cree.getUsername()).isEqualTo("nouveau");
         assertThat(cree.getName()).isEqualTo("Nouveau");
-        assertThat(cree.getPassword()).isEqualTo("hash-bcrypt");
-        assertThat(nomsDesRoles(cree)).containsExactlyInAnyOrder("Admin", "User");
+        assertThat(cree.getRoles()).containsExactlyInAnyOrder("Admin", "User");
+        // Le hash est bien enregistré, mais la réponse (DTO) n'a pas de champ mot de passe.
+        ArgumentCaptor<Users> sauvegarde = ArgumentCaptor.forClass(Users.class);
+        verify(usersRepository).save(sauvegarde.capture());
+        assertThat(sauvegarde.getValue().getPassword()).isEqualTo("hash-bcrypt");
     }
 
     @Test
     void addUserByAdmin_sansRoles_creeUnUtilisateurSansRole() {
         when(usersRepository.findByUsername("nouveau")).thenReturn(Optional.empty());
         when(passwordEncoder.encode("secret1")).thenReturn("hash-bcrypt");
-        when(usersRepository.save(any(Users.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(usersRepository.save(any(Users.class))).thenAnswer(invocation -> enregistre(invocation.getArgument(0)));
         UserCreateRequest sansRoles = demande("nouveau", "Nouveau", "secret1");
         sansRoles.setRoles(null);
 
-        Users cree = controller.addUserByAdmin(sansRoles);
+        UserResponse cree = controller.addUserByAdmin(sansRoles);
 
-        assertThat(cree.getRole()).isEmpty();
+        assertThat(cree.getRoles()).isEmpty();
     }
 
     @Test
@@ -219,6 +222,12 @@ class AdminControllerTest {
 
     // ------------------------------------------------------------------
 
+    /** Comme la base : un utilisateur créé reçoit un identifiant à l'enregistrement. */
+    private Users enregistre(Users user) {
+        user.setUserId(10);
+        return user;
+    }
+
     private UserCreateRequest demande(String username, String name, String password, String... roles) {
         UserCreateRequest request = new UserCreateRequest();
         request.setUsername(username);
@@ -240,9 +249,5 @@ class AdminControllerTest {
         roles.add(role);
         user.setRole(roles);
         return user;
-    }
-
-    private Set<String> nomsDesRoles(Users user) {
-        return user.getRole().stream().map(Role::getRoleName).collect(Collectors.toSet());
     }
 }

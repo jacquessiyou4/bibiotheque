@@ -1,5 +1,6 @@
 package com.ibizabroker.bibliotheque.controller;
 
+import com.ibizabroker.bibliotheque.dto.BorrowResponse;
 import com.ibizabroker.bibliotheque.entity.Borrow;
 import com.ibizabroker.bibliotheque.exceptions.ForbiddenException;
 import com.ibizabroker.bibliotheque.service.BorrowService;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Emprunts. Un utilisateur (User / ADHERENT) n'agit que sur ses propres
@@ -39,42 +41,52 @@ public class BorrowController {
                 && !borrowService.resolveUserId(authentication.getName()).equals(borrow.getUserId())) {
             throw new ForbiddenException("Accès refusé : vous ne pouvez emprunter que pour votre propre compte.");
         }
-        return borrowService.borrowBook(borrow);
+        String resultat = borrowService.borrowBook(borrow);
+        log.info("[EMPRUNT] Emprunt - livre={} - pour userId={} - par {}",
+                borrow.getBookId(), borrow.getUserId(), authentication.getName());
+        return resultat;
     }
 
     @Operation(summary = "Lister tous les emprunts (Admin / bibliothécaire)")
     @PreAuthorize("hasAnyRole('Admin', 'BIBLIOTHECAIRE')")
     @GetMapping
-    public List<Borrow> getAllBorrow() {
-        return borrowService.findAll();
+    public List<BorrowResponse> getAllBorrow() {
+        return versReponses(borrowService.findAll());
     }
 
     @Operation(summary = "Retourner un livre emprunté (un User uniquement le sien)")
     @PreAuthorize("hasAnyRole('User', 'Admin', 'ADHERENT', 'BIBLIOTHECAIRE')")
     @PutMapping
-    public Borrow returnBook(Authentication authentication, @Valid @RequestBody Borrow borrow) {
+    public BorrowResponse returnBook(Authentication authentication, @Valid @RequestBody Borrow borrow) {
         Integer proprietaireAttendu = estPersonnel(authentication)
                 ? null
                 : borrowService.resolveUserId(authentication.getName());
-        return borrowService.returnBook(borrow, proprietaireAttendu);
+        Borrow rendu = borrowService.returnBook(borrow, proprietaireAttendu);
+        log.info("[EMPRUNT] Retour - emprunt={} - livre={} - par {}",
+                rendu.getBorrowId(), rendu.getBookId(), authentication.getName());
+        return BorrowResponse.from(rendu);
     }
 
     @Operation(summary = "Lister les emprunts d'un utilisateur (un User uniquement les siens)")
     @PreAuthorize("hasAnyRole('User', 'Admin', 'ADHERENT', 'BIBLIOTHECAIRE')")
     @GetMapping("user/{id}")
-    public List<Borrow> booksBorrowedByUser(Authentication authentication, @PathVariable Integer id) {
+    public List<BorrowResponse> booksBorrowedByUser(Authentication authentication, @PathVariable Integer id) {
         if (!estPersonnel(authentication)
                 && !borrowService.resolveUserId(authentication.getName()).equals(id)) {
             throw new ForbiddenException("Accès refusé : ces emprunts ne vous appartiennent pas.");
         }
-        return borrowService.findByUserId(id);
+        return versReponses(borrowService.findByUserId(id));
     }
 
     @Operation(summary = "Historique des emprunts d'un livre (Admin / bibliothécaire)")
     @PreAuthorize("hasAnyRole('Admin', 'BIBLIOTHECAIRE')")
     @GetMapping("book/{id}")
-    public List<Borrow> bookBorrowHistory(@PathVariable Integer id) {
-        return borrowService.findByBookId(id);
+    public List<BorrowResponse> bookBorrowHistory(@PathVariable Integer id) {
+        return versReponses(borrowService.findByBookId(id));
+    }
+
+    private List<BorrowResponse> versReponses(List<Borrow> emprunts) {
+        return emprunts.stream().map(BorrowResponse::from).collect(Collectors.toList());
     }
 
     private boolean estPersonnel(Authentication authentication) {

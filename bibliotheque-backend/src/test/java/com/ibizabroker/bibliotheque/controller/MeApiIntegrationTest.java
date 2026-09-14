@@ -115,7 +115,8 @@ class MeApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value(1))
                 .andExpect(jsonPath("$.username").value("A1"))
-                .andExpect(jsonPath("$.role[0].roleName").value("ADHERENT"));
+                .andExpect(jsonPath("$.roles[0]").value("ADHERENT"))
+                .andExpect(jsonPath("$.role").doesNotExist());
     }
 
     @Test

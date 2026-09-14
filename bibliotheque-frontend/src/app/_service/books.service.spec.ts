@@ -40,6 +40,17 @@ describe('BooksService', () => {
       .flush({ content: [unLivre()], totalElements: 1, totalPages: 1, number: 0, size: 1000 });
   });
 
+  it('getBooksPage demande une seule page (10 livres par défaut)', () => {
+    service.getBooksPage(1).subscribe(resultat => {
+      expect(resultat.number).toBe(1);
+      expect(resultat.totalPages).toBe(3);
+      expect(resultat.content[0].bookName).toBe('L1');
+    });
+
+    httpMock.expectOne('http://localhost:8080/admin/books?page=1&size=10')
+      .flush({ content: [unLivre()], totalElements: 21, totalPages: 3, number: 1, size: 10 });
+  });
+
   it('getBookById appelle GET /admin/books/{id}', () => {
     service.getBookById(101).subscribe(livre => {
       expect(livre.bookId).toBe(101);

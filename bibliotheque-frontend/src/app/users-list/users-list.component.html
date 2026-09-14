@@ -25,3 +25,12 @@
         </tr>
     </tbody>
 </table>
+<nav *ngIf="totalPages > 1" class="d-flex align-items-center gap-2" aria-label="Pagination">
+    <button type="button" class="btn btn-outline-secondary btn-sm" (click)="goToPage(page - 1)" [disabled]="page === 0">
+        {{ 'pagination.previous' | translate }}
+    </button>
+    <span class="pagination-status">{{ 'pagination.page' | translate }} {{ page + 1 }} / {{ totalPages }}</span>
+    <button type="button" class="btn btn-outline-secondary btn-sm" (click)="goToPage(page + 1)" [disabled]="page >= totalPages - 1">
+        {{ 'pagination.next' | translate }}
+    </button>
+</nav>

@@ -1,4 +1,6 @@
-import { Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges } from '@angular/core';
+import {
+  ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges
+} from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { Books } from '../../_model/books';
@@ -12,7 +14,8 @@ const QUOTA_RESERVATIONS_ACTIVES = 3;
 @Component({
   selector: 'app-reservation-form',
   templateUrl: './reservation-form.component.html',
-  styleUrls: ['./reservation-form.component.css']
+  styleUrls: ['./reservation-form.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ReservationFormComponent implements OnChanges, OnDestroy {
 
@@ -34,7 +37,8 @@ export class ReservationFormComponent implements OnChanges, OnDestroy {
   activeCount: number | null = null;
   loadingCount = false;
 
-  constructor(private reservationService: ReservationService) { }
+  constructor(private reservationService: ReservationService,
+              private cdr: ChangeDetectorRef) { }
 
   ngOnDestroy(): void {
     this.destroy$.next();
@@ -58,10 +62,13 @@ export class ReservationFormComponent implements OnChanges, OnDestroy {
       next: (reservations) => {
         this.activeCount = reservations.filter(r => STATUTS_ACTIFS.includes(r.statut)).length;
         this.loadingCount = false;
+        // OnPush : une réponse HTTP ne marque pas la vue comme modifiée.
+        this.cdr.markForCheck();
       },
       error: () => {
         this.activeCount = null;
         this.loadingCount = false;
+        this.cdr.markForCheck();
       }
     });
   }

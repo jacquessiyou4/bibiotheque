@@ -4,10 +4,11 @@ import { NgForm } from '@angular/forms';
 import { UsersService } from './users.service';
 import { UserAuthService } from './user-auth.service';
 import { Users } from '../_model/users';
+import { Page } from '../_model/page';
+import { Profile, TokenResponse } from '../_model/auth';
 
 describe('UsersService', () => {
   const API = 'http://localhost:8080';
-  const KEYCLOAK_TOKEN = 'http://localhost:8081/realms/bibliotheque/protocol/openid-connect/token';
 
   let service: UsersService;
   let userAuthService: UserAuthService;
@@ -56,48 +57,55 @@ describe('UsersService', () => {
     });
   });
 
-  describe('login (Keycloak)', () => {
+  describe('login (POST /auth/token)', () => {
     const formulaire = { value: { username: 'A1', password: 'A1123' } } as NgForm;
 
-    it('envoie un « password grant » au realm bibliotheque avec le client frontend', () => {
-      let reponse: any;
+    it('envoie identifiant et mot de passe en JSON au backend et renvoie les jetons', () => {
+      let reponse: TokenResponse | undefined;
       service.login(formulaire).subscribe(r => reponse = r);
 
-      const req = httpMock.expectOne(KEYCLOAK_TOKEN);
+      const req = httpMock.expectOne(`${API}/auth/token`);
       expect(req.request.method).toBe('POST');
-      const corps = req.request.body.toString();
-      expect(corps).toContain('grant_type=password');
-      expect(corps).toContain('client_id=bibliotheque-frontend');
-      expect(corps).toContain('username=A1');
-      expect(corps).toContain('password=A1123');
-      expect(req.request.headers.get('Content-Type')).toBe('application/x-www-form-urlencoded');
-      req.flush({ access_token: 'jeton-keycloak' });
+      expect(req.request.body).toEqual({ username: 'A1', password: 'A1123' });
+      req.flush({
+        accessToken: 'jeton-acces', refreshToken: 'jeton-refresh', tokenType: 'Bearer',
+        expiresIn: 1800, refreshExpiresIn: 1800, scope: 'profile email'
+      });
 
-      expect(reponse.access_token).toBe('jeton-keycloak');
+      expect(reponse!.accessToken).toBe('jeton-acces');
+      expect(reponse!.refreshToken).toBe('jeton-refresh');
     });
 
-    it('marque la requête No-Auth : aucun ancien jeton n’est envoyé à Keycloak', () => {
+    it('ne contacte plus Keycloak directement', () => {
       service.login(formulaire).subscribe();
 
-      const req = httpMock.expectOne(KEYCLOAK_TOKEN);
+      httpMock.expectNone(req => req.url.includes('/protocol/openid-connect/token'));
+      httpMock.expectOne(`${API}/auth/token`).flush({});
+    });
+
+    it('marque la requête No-Auth : aucun ancien jeton n’est envoyé à la connexion', () => {
+      service.login(formulaire).subscribe();
+
+      const req = httpMock.expectOne(`${API}/auth/token`);
       expect(req.request.headers.get('No-Auth')).toBe('True');
       req.flush({});
     });
   });
 
   describe('API utilisateurs', () => {
-    it('getMe appelle GET /me pour l’utilisateur local du jeton', () => {
-      let moi: any;
-      service.getMe().subscribe(r => moi = r);
+    it('getProfile appelle GET /profile pour l’utilisateur local du jeton', () => {
+      let profil: Profile | undefined;
+      service.getProfile().subscribe(r => profil = r);
 
-      const req = httpMock.expectOne(`${API}/me`);
+      const req = httpMock.expectOne(`${API}/profile`);
       expect(req.request.method).toBe('GET');
-      req.flush({ userId: 2, name: 'Adhérent Un' });
+      req.flush({ userId: 2, username: 'a1', name: 'Adhérent Un', email: 'a1@bibliotheque.local', roles: ['ADHERENT', 'User'] });
 
-      expect(moi.userId).toBe(2);
+      expect(profil!.userId).toBe(2);
+      expect(profil!.name).toBe('Adhérent Un');
     });
 
-    it('getUsersList demande une page complète et convertit les rôles en objets', () => {
+    it('getUsersList demande une page complète et convertit les rôles en objets, sans mot de passe', () => {
       let utilisateurs: Users[] = [];
       service.getUsersList().subscribe(u => utilisateurs = u);
 
@@ -111,7 +119,7 @@ describe('UsersService', () => {
       expect(utilisateurs.length).toBe(1);
       expect(utilisateurs[0].username).toBe('a1');
       expect(utilisateurs[0].role).toEqual([{ roleName: 'User' }, { roleName: 'ADHERENT' }]);
-      expect(utilisateurs[0].password).toBe('');
+      expect('password' in utilisateurs[0]).toBeFalse();
     });
 
     it('getUsersList tolère un utilisateur sans rôles', () => {
@@ -124,6 +132,20 @@ describe('UsersService', () => {
       });
 
       expect(utilisateurs[0].role).toEqual([]);
+    });
+
+    it('getUsersPage demande une seule page et convertit son contenu', () => {
+      let resultat: Page<Users> | undefined;
+      service.getUsersPage(2).subscribe(p => resultat = p);
+
+      httpMock.expectOne(`${API}/admin/users?page=2&size=10`).flush({
+        content: [{ userId: 21, username: 'u21', name: 'U21', roles: ['User'] }],
+        totalElements: 21, totalPages: 3, number: 2, size: 10
+      });
+
+      expect(resultat!.number).toBe(2);
+      expect(resultat!.totalPages).toBe(3);
+      expect(resultat!.content[0].role).toEqual([{ roleName: 'User' }]);
     });
 
     it('getUserById appelle GET /admin/users/{id} et convertit la réponse', () => {
@@ -150,7 +172,7 @@ describe('UsersService', () => {
 
     it('updateUser sans nouveau mot de passe n’envoie pas le champ password', () => {
       const utilisateur: Users = {
-        userId: 3, username: 'a2', name: 'Nom Modifié', password: '', role: [{ roleName: 'Admin' }]
+        userId: 3, username: 'a2', name: 'Nom Modifié', role: [{ roleName: 'Admin' }]
       };
       service.updateUser(3, utilisateur).subscribe();
 
@@ -162,10 +184,8 @@ describe('UsersService', () => {
     });
 
     it('updateUser avec un nouveau mot de passe l’envoie au backend', () => {
-      const utilisateur: Users = {
-        userId: 3, username: 'a2', name: 'A2', password: 'nouveau-secret', role: []
-      };
-      service.updateUser(3, utilisateur).subscribe();
+      const utilisateur: Users = { userId: 3, username: 'a2', name: 'A2', role: [] };
+      service.updateUser(3, utilisateur, 'nouveau-secret').subscribe();
 
       const req = httpMock.expectOne(`${API}/admin/users/3`);
       expect(req.request.body.password).toBe('nouveau-secret');

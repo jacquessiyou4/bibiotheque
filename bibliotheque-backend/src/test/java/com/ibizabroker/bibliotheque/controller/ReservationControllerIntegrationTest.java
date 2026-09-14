@@ -6,7 +6,7 @@ import com.ibizabroker.bibliotheque.dao.ReservationRepository;
 import com.ibizabroker.bibliotheque.dao.UsersRepository;
 import com.ibizabroker.bibliotheque.entity.Books;
 import com.ibizabroker.bibliotheque.entity.Reservation;
-import com.ibizabroker.bibliotheque.entity.StatutReservation;
+import com.ibizabroker.bibliotheque.entity.ReservationStatus;
 import com.ibizabroker.bibliotheque.entity.Users;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -98,8 +98,8 @@ class ReservationControllerIntegrationTest {
         livreIndisponible.setBookName("L2");
         livreIndisponible.setNoOfCopies(0);
 
-        reservationUn = reservation(100, adherentUn, StatutReservation.EN_ATTENTE);
-        reservationDeux = reservation(101, adherentDeux, StatutReservation.EN_ATTENTE);
+        reservationUn = reservation(100, adherentUn, ReservationStatus.EN_ATTENTE);
+        reservationDeux = reservation(101, adherentDeux, ReservationStatus.EN_ATTENTE);
 
         when(usersRepository.findByUsername("A1")).thenReturn(Optional.of(adherentUn));
         when(usersRepository.findByUsername("A2")).thenReturn(Optional.of(adherentDeux));
@@ -245,7 +245,7 @@ class ReservationControllerIntegrationTest {
         mockMvc.perform(patch("/api/reservations/100/annuler")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN_ADHERENT))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.statut").value(StatutReservation.ANNULEE.name()));
+                .andExpect(jsonPath("$.statut").value(ReservationStatus.ANNULEE.name()));
     }
 
     @Test
@@ -289,7 +289,7 @@ class ReservationControllerIntegrationTest {
         mockMvc.perform(patch("/api/reservations/101/annuler")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN_BIBLIOTHECAIRE))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.statut").value(StatutReservation.ANNULEE.name()));
+                .andExpect(jsonPath("$.statut").value(ReservationStatus.ANNULEE.name()));
     }
 
     @Test
@@ -316,7 +316,7 @@ class ReservationControllerIntegrationTest {
         return user;
     }
 
-    private Reservation reservation(int id, Users adherent, StatutReservation statut) {
+    private Reservation reservation(int id, Users adherent, ReservationStatus statut) {
         Reservation reservation = new Reservation();
         reservation.setId(id);
         reservation.setLivre(livreIndisponible);

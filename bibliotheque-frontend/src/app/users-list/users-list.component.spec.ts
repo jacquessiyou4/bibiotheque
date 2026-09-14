@@ -10,6 +10,7 @@ import { TranslationService } from '../_service/translation.service';
 import { UsersService } from '../_service/users.service';
 import { NotificationService } from '../_service/notification.service';
 import { Users } from '../_model/users';
+import { Page } from '../_model/page';
 
 describe('UsersListComponent', () => {
   let component: UsersListComponent;
@@ -19,12 +20,16 @@ describe('UsersListComponent', () => {
   let router: Router;
 
   const mockUsers: Users[] = [
-    { userId: 1, username: 'john', name: 'John', password: '', role: [{ roleName: 'ADHERENT' }] },
-    { userId: 2, username: 'jane', name: 'Jane', password: '', role: [{ roleName: 'BIBLIOTHECAIRE' }] },
+    { userId: 1, username: 'john', name: 'John', role: [{ roleName: 'ADHERENT' }] },
+    { userId: 2, username: 'jane', name: 'Jane', role: [{ roleName: 'BIBLIOTHECAIRE' }] },
   ];
 
+  function page(content: Users[], numero: number, totalPages: number): Page<Users> {
+    return { content, number: numero, totalPages, totalElements: totalPages * 10, size: 10 };
+  }
+
   beforeEach(async () => {
-    usersServiceSpy = jasmine.createSpyObj('UsersService', ['getUsersList']);
+    usersServiceSpy = jasmine.createSpyObj('UsersService', ['getUsersPage']);
     notificationSpy = jasmine.createSpyObj('NotificationService', ['showError']);
 
     await TestBed.configureTestingModule({
@@ -38,7 +43,7 @@ describe('UsersListComponent', () => {
     })
     .compileComponents();
 
-    usersServiceSpy.getUsersList.and.returnValue(of(mockUsers));
+    usersServiceSpy.getUsersPage.and.returnValue(of(page(mockUsers, 0, 2)));
 
     fixture = TestBed.createComponent(UsersListComponent);
     component = fixture.componentInstance;
@@ -50,10 +55,30 @@ describe('UsersListComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('ngOnInit charge la liste des utilisateurs', () => {
-    expect(usersServiceSpy.getUsersList).toHaveBeenCalled();
+  it('ngOnInit charge la première page des utilisateurs', () => {
+    expect(usersServiceSpy.getUsersPage).toHaveBeenCalledWith(0, 10);
     expect(component.users.length).toBe(2);
     expect(component.users[0].name).toBe('John');
+    expect(component.totalPages).toBe(2);
+  });
+
+  it('affiche la pagination avec « Suivant » actif sur la première page', () => {
+    const boutons = fixture.nativeElement.querySelectorAll('nav button');
+
+    expect(fixture.nativeElement.querySelector('nav').textContent).toContain('pagination.page 1 / 2');
+    expect((boutons[0] as HTMLButtonElement).disabled).toBeTrue();
+    expect((boutons[1] as HTMLButtonElement).disabled).toBeFalse();
+  });
+
+  it('goToPage charge la page suivante et ignore une page hors limites', () => {
+    usersServiceSpy.getUsersPage.and.returnValue(of(page([mockUsers[1]], 1, 2)));
+
+    component.goToPage(1);
+    component.goToPage(2);
+
+    expect(usersServiceSpy.getUsersPage).toHaveBeenCalledTimes(2);
+    expect(usersServiceSpy.getUsersPage.calls.mostRecent().args).toEqual([1, 10]);
+    expect(component.users).toEqual([mockUsers[1]]);
   });
 
   it('userDetails navigue vers la page de détails', () => {
@@ -73,7 +98,7 @@ describe('UsersListComponent', () => {
   });
 
   it('signale une erreur si la liste des utilisateurs ne peut pas être chargée', () => {
-    usersServiceSpy.getUsersList.and.returnValue(throwError(() => new Error('403')));
+    usersServiceSpy.getUsersPage.and.returnValue(throwError(() => new Error('403')));
 
     const autre = TestBed.createComponent(UsersListComponent);
     autre.detectChanges();

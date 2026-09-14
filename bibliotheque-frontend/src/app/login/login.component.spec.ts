@@ -12,6 +12,7 @@ import { TranslationService } from '../_service/translation.service';
 import { UsersService } from '../_service/users.service';
 import { UserAuthService } from '../_service/user-auth.service';
 import { NotificationService } from '../_service/notification.service';
+import { Profile, TokenResponse } from '../_model/auth';
 
 describe('LoginComponent', () => {
   const MESSAGE_AUTRE_ECHEC = 'Connexion impossible : compte inconnu de l\'application ou serveur injoignable';
@@ -23,8 +24,19 @@ describe('LoginComponent', () => {
   let notificationSpy: jasmine.SpyObj<NotificationService>;
   let router: Router;
 
+  function jetons(accessToken: string): TokenResponse {
+    return {
+      accessToken, refreshToken: 'refresh', tokenType: 'Bearer',
+      expiresIn: 1800, refreshExpiresIn: 1800, scope: 'profile email'
+    };
+  }
+
+  function profil(userId: number, name: string): Profile {
+    return { userId, username: 'u' + userId, name, email: null, roles: [] };
+  }
+
   beforeEach(async () => {
-    usersServiceSpy = jasmine.createSpyObj('UsersService', ['login', 'getMe']);
+    usersServiceSpy = jasmine.createSpyObj('UsersService', ['login', 'getProfile']);
     userAuthServiceSpy = jasmine.createSpyObj('UserAuthService',
       ['decodeJwt', 'setRoles', 'setToken', 'setName', 'setUserId', 'clear']);
     notificationSpy = jasmine.createSpyObj('NotificationService', ['showError']);
@@ -61,9 +73,9 @@ describe('LoginComponent', () => {
     expect(component.showPassword).toBe(false);
   });
 
-  it('login store le token et les rôles du jeton Keycloak puis navigue', () => {
-    usersServiceSpy.login.and.returnValue(of({ access_token: 'jeton-keycloak' }));
-    usersServiceSpy.getMe.and.returnValue(of({ userId: 2, name: 'Admin' }));
+  it('login stocke l’accessToken de POST /auth/token, les rôles du jeton, le profil, puis navigue', () => {
+    usersServiceSpy.login.and.returnValue(of(jetons('jeton-keycloak')));
+    usersServiceSpy.getProfile.and.returnValue(of(profil(2, 'Admin Bibliothèque')));
     userAuthServiceSpy.decodeJwt.and.returnValue({
       realm_access: { roles: ['Admin', 'ADHERENT'] },
       preferred_username: 'admin'
@@ -74,16 +86,29 @@ describe('LoginComponent', () => {
     component.login(fauxFormulaire);
 
     expect(usersServiceSpy.login).toHaveBeenCalledWith(fauxFormulaire);
+    expect(userAuthServiceSpy.decodeJwt).toHaveBeenCalledWith('jeton-keycloak');
     expect(userAuthServiceSpy.setToken).toHaveBeenCalledWith('jeton-keycloak');
     expect(userAuthServiceSpy.setRoles).toHaveBeenCalledWith(
       [{ roleName: 'Admin' }, { roleName: 'ADHERENT' }]);
     expect(userAuthServiceSpy.setUserId).toHaveBeenCalledWith(2);
+    expect(userAuthServiceSpy.setName).toHaveBeenCalledWith('Admin Bibliothèque');
     expect(router.navigate).toHaveBeenCalledWith(['/books']);
   });
 
+  it('le refreshToken n’est pas stocké (pas de renouvellement côté backend)', () => {
+    usersServiceSpy.login.and.returnValue(of(jetons('jeton-acces')));
+    usersServiceSpy.getProfile.and.returnValue(of(profil(1, 'Adherent')));
+    userAuthServiceSpy.decodeJwt.and.returnValue({ realm_access: { roles: ['User'] } } as never);
+    spyOn(router, 'navigate');
+
+    component.login({} as never);
+
+    expect(userAuthServiceSpy.setToken).toHaveBeenCalledOnceWith('jeton-acces');
+  });
+
   it('login sans rôle Admin redirige vers la page des emprunts', () => {
-    usersServiceSpy.login.and.returnValue(of({ access_token: 'jeton-adherent' }));
-    usersServiceSpy.getMe.and.returnValue(of({ userId: 1, name: 'Adherent' }));
+    usersServiceSpy.login.and.returnValue(of(jetons('jeton-adherent')));
+    usersServiceSpy.getProfile.and.returnValue(of(profil(1, 'Adherent')));
     userAuthServiceSpy.decodeJwt.and.returnValue({
       realm_access: { roles: ['User', 'ADHERENT'] },
       preferred_username: 'A1'
@@ -96,8 +121,8 @@ describe('LoginComponent', () => {
   });
 
   it('login avec un jeton sans rôles stocke une liste de rôles vide', () => {
-    usersServiceSpy.login.and.returnValue(of({ access_token: 'jeton-sans-role' }));
-    usersServiceSpy.getMe.and.returnValue(of({ userId: 4, name: 'Sans Rôle' }));
+    usersServiceSpy.login.and.returnValue(of(jetons('jeton-sans-role')));
+    usersServiceSpy.getProfile.and.returnValue(of(profil(4, 'Sans Rôle')));
     userAuthServiceSpy.decodeJwt.and.returnValue({ preferred_username: 'x' } as never);
     spyOn(router, 'navigate');
 
@@ -108,7 +133,7 @@ describe('LoginComponent', () => {
   });
 
   describe('échecs de connexion', () => {
-    it('mauvais identifiants (401 Keycloak) : message dédié, session effacée, pas de navigation', () => {
+    it('mauvais identifiants (401 de /auth/token) : message dédié, session effacée, pas de navigation', () => {
       usersServiceSpy.login.and.returnValue(throwError(() => new HttpErrorResponse({ status: 401 })));
       spyOn(router, 'navigate');
 
@@ -119,15 +144,25 @@ describe('LoginComponent', () => {
       expect(router.navigate).not.toHaveBeenCalled();
     });
 
-    it('compte Keycloak inconnu de l’application (/me en 404) : efface le jeton déjà stocké', () => {
-      usersServiceSpy.login.and.returnValue(of({ access_token: 'jeton-valide' }));
-      usersServiceSpy.getMe.and.returnValue(throwError(() => new HttpErrorResponse({ status: 404 })));
+    it('Keycloak indisponible (503 de /auth/token) : message dédié', () => {
+      usersServiceSpy.login.and.returnValue(throwError(() => new HttpErrorResponse({ status: 503 })));
+
+      component.login({} as never);
+
+      expect(userAuthServiceSpy.clear).toHaveBeenCalled();
+      expect(notificationSpy.showError)
+        .toHaveBeenCalledWith('Service d\'authentification indisponible, réessayez plus tard');
+    });
+
+    it('compte inconnu de l’application (/profile en 404) : efface le jeton déjà stocké', () => {
+      usersServiceSpy.login.and.returnValue(of(jetons('jeton-valide')));
+      usersServiceSpy.getProfile.and.returnValue(throwError(() => new HttpErrorResponse({ status: 404 })));
       userAuthServiceSpy.decodeJwt.and.returnValue({ realm_access: { roles: ['User'] } } as never);
       spyOn(router, 'navigate');
 
       component.login({} as never);
 
-      // Le jeton et les rôles ont été stockés avant /me : ils doivent être effacés.
+      // Le jeton et les rôles ont été stockés avant /profile : ils doivent être effacés.
       expect(userAuthServiceSpy.setToken).toHaveBeenCalledWith('jeton-valide');
       expect(userAuthServiceSpy.clear).toHaveBeenCalled();
       expect(notificationSpy.showError).toHaveBeenCalledWith(MESSAGE_AUTRE_ECHEC);

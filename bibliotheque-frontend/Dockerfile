@@ -19,8 +19,13 @@ FROM nginx:1.27-alpine
 COPY --from=build /app/dist/bibliotheque-frontend /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
+# En-tête Content-Security-Policy inclus par nginx.conf : valeur par défaut,
+# régénérée au démarrage à partir de API_URL.
+RUN mkdir -p /etc/nginx/security-headers
+COPY csp.conf /etc/nginx/security-headers/csp.conf
+
 # Script lancé automatiquement par l'image nginx officielle au démarrage :
-# régénère assets/env.js à partir de la variable d'environnement API_URL.
+# régénère assets/env.js et la CSP à partir de la variable d'environnement API_URL.
 COPY docker-entrypoint.d/40-env-config.sh /docker-entrypoint.d/40-env-config.sh
 RUN chmod +x /docker-entrypoint.d/40-env-config.sh
 

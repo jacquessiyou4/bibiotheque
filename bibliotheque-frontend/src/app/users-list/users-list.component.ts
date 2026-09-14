@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { Users } from '../_model/users';
+import { DEFAULT_PAGE_SIZE } from '../_model/page';
 import { UsersService } from '../_service/users.service';
 import { NotificationService } from '../_service/notification.service';
 
@@ -16,6 +17,10 @@ export class UsersListComponent implements OnInit, OnDestroy {
 
   private destroy$ = new Subject<void>();
   users: Users[] = [];
+  /** Numéro de page courant, à partir de 0 (comme Spring Data). */
+  page = 0;
+  totalPages = 0;
+  readonly pageSize = DEFAULT_PAGE_SIZE;
 
   constructor(
     private usersService: UsersService,
@@ -33,10 +38,19 @@ export class UsersListComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
+  goToPage(page: number) {
+    if (page < 0 || (this.totalPages > 0 && page >= this.totalPages)) {
+      return;
+    }
+    this.page = page;
+    this.getUsers();
+  }
+
   private getUsers() {
-    this.usersService.getUsersList().pipe(takeUntil(this.destroy$)).subscribe({
-      next: (data) => {
-        this.users = data;
+    this.usersService.getUsersPage(this.page, this.pageSize).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (resultat) => {
+        this.users = resultat.content;
+        this.totalPages = resultat.totalPages;
         // OnPush : une réponse HTTP ne marque pas la vue comme modifiée.
         this.cdr.markForCheck();
       },

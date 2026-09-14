@@ -41,7 +41,7 @@ public class AdminController {
     @Operation(summary = "Créer un nouvel utilisateur")
     @PostMapping("/users")
     @PreAuthorize("hasRole('Admin')")
-    public Users addUserByAdmin(@Valid @RequestBody UserCreateRequest request) {
+    public UserResponse addUserByAdmin(@Valid @RequestBody UserCreateRequest request) {
         log.info("Requête POST /admin/users — création de l'utilisateur '{}'", request.getUsername());
         // Le username identifie le compte Keycloak (/me, réservations) : un
         // doublon ferait échouer findByUsername pour les deux comptes.
@@ -63,7 +63,8 @@ public class AdminController {
         }
         user.setRole(roles);
 
-        return usersRepository.save(user);
+        // DTO et non l'entité : le hash du mot de passe ne dépend plus d'un @JsonIgnore.
+        return toUserResponse(usersRepository.save(user));
     }
 
     @Operation(summary = "Lister les utilisateurs (pagination)")
@@ -127,7 +128,7 @@ public class AdminController {
             user.getUserId(),
             user.getUsername(),
             user.getName(),
-            user.getRole().stream()
+            user.getRole() == null ? new java.util.ArrayList<>() : user.getRole().stream()
                 .map(Role::getRoleName)
                 .collect(Collectors.toList())
         );

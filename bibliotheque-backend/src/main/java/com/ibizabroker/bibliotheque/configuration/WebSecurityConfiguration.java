@@ -24,18 +24,21 @@ import org.springframework.security.oauth2.jwt.Jwt;
 @EnableGlobalMethodSecurity(prePostEnabled = true)
 public class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
 
-    @Autowired
-    private JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final LoggingAccessDeniedHandler loggingAccessDeniedHandler;
+    private final UserDetailsService jwtService;
+    private final Converter<Jwt, AbstractAuthenticationToken> jwtAuthenticationConverter;
 
-    @Autowired
-    private LoggingAccessDeniedHandler loggingAccessDeniedHandler;
-
-    @Autowired
-    private UserDetailsService jwtService;
-
-    @Autowired
-    @Qualifier("jwtAuthenticationConverter")
-    private Converter<Jwt, AbstractAuthenticationToken> jwtAuthenticationConverter;
+    public WebSecurityConfiguration(JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
+                                    LoggingAccessDeniedHandler loggingAccessDeniedHandler,
+                                    UserDetailsService jwtService,
+                                    @Qualifier("jwtAuthenticationConverter")
+                                    Converter<Jwt, AbstractAuthenticationToken> jwtAuthenticationConverter) {
+        this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
+        this.loggingAccessDeniedHandler = loggingAccessDeniedHandler;
+        this.jwtService = jwtService;
+        this.jwtAuthenticationConverter = jwtAuthenticationConverter;
+    }
 
     @Bean
     @Override

@@ -1,23 +1,23 @@
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { NgForm } from '@angular/forms';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { CreateUserRequest, UserListItem, Users } from '../_model/users';
-import { LIST_PAGE_SIZE, Page } from '../_model/page';
+import { DEFAULT_PAGE_SIZE, LIST_PAGE_SIZE, Page } from '../_model/page';
+import { Profile, TokenResponse } from '../_model/auth';
 import { UserAuthService } from './user-auth.service';
-import { apiUrl, keycloakClient, keycloakRealm, keycloakUrl } from './api-config';
+import { apiUrl } from './api-config';
 
 /**
- * Le backend renvoie des UserResponse (rôles = liste de noms) ; les
- * composants manipulent le modèle Users (rôles = [{ roleName }]).
+ * Le backend renvoie des UserResponse (rôles = liste de noms, jamais de mot
+ * de passe) ; les composants manipulent le modèle Users (rôles = [{ roleName }]).
  */
 function toUsers(user: UserListItem): Users {
   return {
     userId: user.userId,
     username: user.username,
     name: user.name,
-    password: '',
     role: (user.roles || []).map(roleName => ({ roleName }))
   };
 }
@@ -38,35 +38,26 @@ export class UsersService {
   ) { }
 
   /**
-   * Authentification déléguée à Keycloak (Direct Access Grant, password flow).
-   * Keycloak répond un access_token JWT qui sera présenté au backend dans
-   * l'en-tête Authorization (voir AuthInterceptor).
+   * Connexion via le backend (POST /auth/token), qui obtient les jetons
+   * auprès de Keycloak : le navigateur ne contacte plus Keycloak.
+   * L'accessToken est ensuite présenté au backend dans l'en-tête
+   * Authorization (voir AuthInterceptor). No-Auth : un ancien jeton expiré
+   * ne doit pas être envoyé, le backend le refuserait avant la connexion.
    */
-  public login(loginData: NgForm) {
-    const body = new HttpParams()
-      .set('grant_type', 'password')
-      .set('client_id', keycloakClient())
-      .set('username', loginData.value.username)
-      .set('password', loginData.value.password);
-
-    return this.httpClient.post(
-      `${keycloakUrl()}/realms/${keycloakRealm()}/protocol/openid-connect/token`,
-      body,
-      {
-        headers: new HttpHeaders({
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'No-Auth': 'True'
-        })
-      }
+  public login(loginData: NgForm): Observable<TokenResponse> {
+    return this.httpClient.post<TokenResponse>(
+      `${apiUrl()}/auth/token`,
+      { username: loginData.value.username, password: loginData.value.password },
+      { headers: new HttpHeaders({ 'No-Auth': 'True' }) }
     );
   }
 
   /**
-   * Renvoie l'utilisateur LOCAL de l'application associé au jeton Keycloak
-   * courant (utilisé notamment pour récupérer le userId des emprunts).
+   * Renvoie l'utilisateur LOCAL de l'application associé au jeton courant
+   * (utilisé notamment pour récupérer le userId des emprunts).
    */
-  public getMe() {
-    return this.httpClient.get(`${apiUrl()}/me`);
+  public getProfile(): Observable<Profile> {
+    return this.httpClient.get<Profile>(`${apiUrl()}/profile`);
   }
 
   public roleMatch(allowedRoles: string[]): boolean {
@@ -85,13 +76,20 @@ export class UsersService {
     return false;
   }
 
-  // GET /admin/users est paginé côté backend (Page<UserResponse>).
+  // Liste complète, pour les écrans qui recoupent les utilisateurs (emprunts,
+  // réservations). GET /admin/users est paginé côté backend (Page<UserResponse>).
   getUsersList(): Observable<Users[]> {
     return this.httpClient.get<Page<UserListItem>>(this.baseURL, { params: { size: LIST_PAGE_SIZE } })
       .pipe(map(page => page.content.map(toUsers)));
   }
 
-  createUser(user: CreateUserRequest | Users): Observable<Object> {
+  // Tableau paginé de la liste des utilisateurs : une seule page à la fois.
+  getUsersPage(page: number, size: number = DEFAULT_PAGE_SIZE): Observable<Page<Users>> {
+    return this.httpClient.get<Page<UserListItem>>(this.baseURL, { params: { page, size } })
+      .pipe(map(resultat => ({ ...resultat, content: resultat.content.map(toUsers) })));
+  }
+
+  createUser(user: CreateUserRequest): Observable<Object> {
     return this.httpClient.post(`${this.baseURL}`, user);
   }
 
@@ -99,16 +97,19 @@ export class UsersService {
     return this.httpClient.get<UserListItem>(`${this.baseURL}/${userId}`).pipe(map(toUsers));
   }
 
-  updateUser(userId: number, user: Users): Observable<Object> {
-    // Le backend attend un UserCreateRequest : rôles en liste de noms, et
-    // mot de passe absent (pas vide, sinon @Size le rejette) pour le conserver.
+  /**
+   * Le backend attend un UserCreateRequest : rôles en liste de noms, et mot
+   * de passe absent (pas vide, sinon @Size le rejette) pour le conserver. Un
+   * nouveau mot de passe se passe à part : il ne fait pas partie du modèle Users.
+   */
+  updateUser(userId: number, user: Users, newPassword?: string): Observable<Object> {
     const body: Partial<CreateUserRequest> = {
       username: user.username,
       name: user.name,
       roles: (user.role || []).map(r => r.roleName)
     };
-    if (user.password) {
-      body.password = user.password;
+    if (newPassword) {
+      body.password = newPassword;
     }
     return this.httpClient.put(`${this.baseURL}/${userId}`, body);
   }

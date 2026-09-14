@@ -7,7 +7,7 @@ import com.ibizabroker.bibliotheque.dto.ReservationRequest;
 import com.ibizabroker.bibliotheque.dto.ReservationResponse;
 import com.ibizabroker.bibliotheque.entity.Books;
 import com.ibizabroker.bibliotheque.entity.Reservation;
-import com.ibizabroker.bibliotheque.entity.StatutReservation;
+import com.ibizabroker.bibliotheque.entity.ReservationStatus;
 import com.ibizabroker.bibliotheque.entity.Users;
 import com.ibizabroker.bibliotheque.exceptions.BadRequestException;
 import com.ibizabroker.bibliotheque.exceptions.ConflictException;
@@ -139,7 +139,7 @@ class ReservationServiceTest {
         request.setLivreId(101);
 
         assertThat(reservationService.creer(request, false, ADHERENT_CONNECTE).getStatut())
-                .isEqualTo(StatutReservation.EN_ATTENTE);
+                .isEqualTo(ReservationStatus.EN_ATTENTE);
     }
 
     // ------------------------------------------------------------------
@@ -148,7 +148,7 @@ class ReservationServiceTest {
     @Test
     void rg05_refuseLAnnulationDuneReservationExpiree() {
         Reservation expiree = reservationDe(1);
-        expiree.setStatut(StatutReservation.EXPIREE);
+        expiree.setStatut(ReservationStatus.EXPIREE);
         when(reservationRepository.findById(60)).thenReturn(Optional.of(expiree));
 
         assertThatThrownBy(() -> reservationService.annuler(60, false, ADHERENT_CONNECTE))
@@ -159,13 +159,13 @@ class ReservationServiceTest {
     @Test
     void rg05_annuleLaReservationActiveDeSonProprietaire() {
         Reservation active = reservationDe(1);
-        active.setStatut(StatutReservation.EN_ATTENTE);
+        active.setStatut(ReservationStatus.EN_ATTENTE);
         when(reservationRepository.findById(60)).thenReturn(Optional.of(active));
         when(reservationRepository.save(any(Reservation.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         assertThat(reservationService.annuler(60, false, ADHERENT_CONNECTE).getStatut())
-                .isEqualTo(StatutReservation.ANNULEE);
+                .isEqualTo(ReservationStatus.ANNULEE);
     }
 
     // ------------------------------------------------------------------
@@ -352,19 +352,19 @@ class ReservationServiceTest {
     @Test
     void listerExpirees_renvoieLesReservationsExpirees() {
         Reservation expiree = reservationDe(1);
-        expiree.setStatut(StatutReservation.EXPIREE);
-        when(reservationRepository.findByStatut(StatutReservation.EXPIREE))
+        expiree.setStatut(ReservationStatus.EXPIREE);
+        when(reservationRepository.findByStatut(ReservationStatus.EXPIREE))
                 .thenReturn(Collections.singletonList(expiree));
 
         List<ReservationResponse> resultat = reservationService.listerExpirees();
 
         assertThat(resultat).hasSize(1);
-        assertThat(resultat.get(0).getStatut()).isEqualTo(StatutReservation.EXPIREE);
+        assertThat(resultat.get(0).getStatut()).isEqualTo(ReservationStatus.EXPIREE);
     }
 
     @Test
     void listerExpirees_renvoieListeVideSiAucuneExpiree() {
-        when(reservationRepository.findByStatut(StatutReservation.EXPIREE))
+        when(reservationRepository.findByStatut(ReservationStatus.EXPIREE))
                 .thenReturn(Collections.emptyList());
 
         List<ReservationResponse> resultat = reservationService.listerExpirees();
@@ -378,14 +378,14 @@ class ReservationServiceTest {
     @Test
     void expirerReservationsDepassees_passeLesReservationsEnExpiree() {
         Reservation aExpirer = reservationDe(1);
-        aExpirer.setStatut(StatutReservation.EN_ATTENTE);
+        aExpirer.setStatut(ReservationStatus.EN_ATTENTE);
         when(reservationRepository.findByStatutInAndDateExpirationBefore(any(), any()))
                 .thenReturn(Collections.singletonList(aExpirer));
 
         reservationService.expirerReservationsDepassees();
 
         verify(reservationRepository).saveAll(any());
-        assertThat(aExpirer.getStatut()).isEqualTo(StatutReservation.EXPIREE);
+        assertThat(aExpirer.getStatut()).isEqualTo(ReservationStatus.EXPIREE);
     }
 
     @Test
@@ -403,16 +403,16 @@ class ReservationServiceTest {
     // ------------------------------------------------------------------
     @Test
     void lister_avecStatutEtAdherent_rechercheStatutEtAdherent() {
-        reservationService.lister(StatutReservation.EN_ATTENTE, 1, true, "admin");
+        reservationService.lister(ReservationStatus.EN_ATTENTE, 1, true, "admin");
 
-        verify(reservationRepository).findByStatutAndAdherent_UserId(StatutReservation.EN_ATTENTE, 1);
+        verify(reservationRepository).findByStatutAndAdherent_UserId(ReservationStatus.EN_ATTENTE, 1);
     }
 
     @Test
     void lister_avecStatutSeul_rechercheParStatut() {
-        reservationService.lister(StatutReservation.DISPONIBLE, null, true, "admin");
+        reservationService.lister(ReservationStatus.DISPONIBLE, null, true, "admin");
 
-        verify(reservationRepository).findByStatut(StatutReservation.DISPONIBLE);
+        verify(reservationRepository).findByStatut(ReservationStatus.DISPONIBLE);
     }
 
     @Test
@@ -430,19 +430,19 @@ class ReservationServiceTest {
     @Test
     void rg06_annuleLaReservationDisponibleDeSonProprietaire() {
         Reservation disponible = reservationDe(1);
-        disponible.setStatut(StatutReservation.DISPONIBLE);
+        disponible.setStatut(ReservationStatus.DISPONIBLE);
         when(reservationRepository.findById(60)).thenReturn(Optional.of(disponible));
         when(reservationRepository.save(any(Reservation.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         assertThat(reservationService.annuler(60, false, ADHERENT_CONNECTE).getStatut())
-                .isEqualTo(StatutReservation.ANNULEE);
+                .isEqualTo(ReservationStatus.ANNULEE);
     }
 
     @Test
     void rg05_refuseLAnnulationDUneReservationAnnulee() {
         Reservation annulee = reservationDe(1);
-        annulee.setStatut(StatutReservation.ANNULEE);
+        annulee.setStatut(ReservationStatus.ANNULEE);
         when(reservationRepository.findById(60)).thenReturn(Optional.of(annulee));
 
         assertThatThrownBy(() -> reservationService.annuler(60, false, ADHERENT_CONNECTE))
@@ -499,7 +499,7 @@ class ReservationServiceTest {
 
         ReservationResponse response = reservationService.creer(request, false, ADHERENT_CONNECTE);
 
-        assertThat(response.getStatut()).isEqualTo(StatutReservation.EN_ATTENTE);
+        assertThat(response.getStatut()).isEqualTo(ReservationStatus.EN_ATTENTE);
         assertThat(response.getLivreId()).isEqualTo(101);
         assertThat(response.getAdherentId()).isEqualTo(1);
         assertThat(response.getDateExpiration()).isAfter(response.getDateReservation());
@@ -520,7 +520,7 @@ class ReservationServiceTest {
         reservation.setAdherent(adh);
         reservation.setDateReservation(LocalDateTime.now());
         reservation.setDateExpiration(LocalDateTime.now().plusDays(7));
-        reservation.setStatut(StatutReservation.EN_ATTENTE);
+        reservation.setStatut(ReservationStatus.EN_ATTENTE);
         return reservation;
     }
 }

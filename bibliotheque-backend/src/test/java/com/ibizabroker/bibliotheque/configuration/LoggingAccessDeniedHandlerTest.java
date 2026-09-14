@@ -30,9 +30,7 @@ class LoggingAccessDeniedHandlerTest {
 
     @BeforeEach
     void setUp() {
-        handler = new LoggingAccessDeniedHandler();
-        org.springframework.test.util.ReflectionTestUtils.setField(
-                handler, "objectMapper", new ObjectMapper());
+        handler = new LoggingAccessDeniedHandler(new ObjectMapper());
         request = new MockHttpServletRequest("DELETE", "/api/reservations/100");
         response = new MockHttpServletResponse();
     }

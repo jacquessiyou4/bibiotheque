@@ -1,15 +1,21 @@
 <div class="container col-md-6 offset-mid-3">
     <h3 class="text-center"> {{ 'createBook.title' | translate }} </h3>
-    <form (ngSubmit) = "onSubmit()" autocomplete="off">
+    <form (ngSubmit) = "onSubmit()" #bookForm="ngForm" autocomplete="off">
 
         <div class="form-group">
             <label style="margin-bottom: 10px"> {{ 'book.bookName' | translate }} </label>
-            <input type="text" class="form-control" style="margin-bottom: 10px" id="bookName" [(ngModel)] = "book.bookName" name="bookName">
+            <input type="text" class="form-control" style="margin-bottom: 10px" id="bookName" [(ngModel)] = "book.bookName" name="bookName" required maxlength="255" #bookName="ngModel">
+            <div *ngIf="bookName.invalid && bookName.touched" class="text-danger">
+                {{ 'validation.book_name_required' | translate }}
+            </div>
         </div>
 
         <div class="form-group">
             <label style="margin-bottom: 10px"> {{ 'book.author' | translate }} </label>
-            <input type="text" class="form-control" style="margin-bottom: 10px" id="bookAuthor" [(ngModel)] = "book.bookAuthor" name="bookAuthor">
+            <input type="text" class="form-control" style="margin-bottom: 10px" id="bookAuthor" [(ngModel)] = "book.bookAuthor" name="bookAuthor" required #bookAuthor="ngModel">
+            <div *ngIf="bookAuthor.invalid && bookAuthor.touched" class="text-danger">
+                {{ 'validation.book_author_required' | translate }}
+            </div>
         </div>
 
         <div class="form-group">
@@ -19,9 +25,12 @@
 
         <div class="form-group">
             <label style="margin-bottom: 10px"> {{ 'book.copies' | translate }} </label>
-            <input type="number" min="0" class="form-control" style="margin-bottom: 10px" id="noOfCopies" [(ngModel)] = "book.noOfCopies" name="noOfCopies">
+            <input type="number" min="0" class="form-control" style="margin-bottom: 10px" id="noOfCopies" [(ngModel)] = "book.noOfCopies" name="noOfCopies" required #noOfCopies="ngModel">
+            <div *ngIf="noOfCopies.invalid && noOfCopies.touched" class="text-danger">
+                {{ 'validation.copies_min' | translate }}
+            </div>
         </div>
 
-        <button class="btn btn-success" type="submit"> {{ 'form.submit' | translate }} </button>
+        <button class="btn btn-success" type="submit" [disabled]="bookForm.invalid"> {{ 'form.submit' | translate }} </button>
     </form>
 </div>

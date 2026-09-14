@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -6,10 +6,13 @@ import { Books } from '../_model/books';
 import { BooksService } from '../_service/books.service';
 import { NotificationService } from '../_service/notification.service';
 
+// OnPush sans markForCheck : la vue ne change qu'à la saisie, la réponse
+// HTTP navigue ou passe par les notifications.
 @Component({
   selector: 'app-create-book',
   templateUrl: './create-book.component.html',
-  styleUrls: ['./create-book.component.css']
+  styleUrls: ['./create-book.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CreateBookComponent implements OnInit, OnDestroy {
 

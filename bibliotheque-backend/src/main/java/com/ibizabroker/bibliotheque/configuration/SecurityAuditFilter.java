@@ -31,6 +31,13 @@ public class SecurityAuditFilter implements Filter {
     private static final Logger log = LoggerFactory.getLogger(SecurityAuditFilter.class);
     private static final String REQUEST_ID_HEADER = "X-Request-ID";
     private static final String MDC_REQUEST_ID = "requestId";
+    /**
+     * Utilisateur à l'origine d'un refus, posé par GlobalExceptionHandler. Ce
+     * filtre entoure la chaîne Spring Security : quand il journalise (après la
+     * chaîne), le contexte de sécurité est déjà vidé et tout le monde
+     * apparaîtrait « anonyme ».
+     */
+    public static final String ATTRIBUT_UTILISATEUR = "securite.utilisateur";
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
@@ -52,13 +59,17 @@ public class SecurityAuditFilter implements Filter {
             int status = httpResponse.getStatus();
             if (status == HttpServletResponse.SC_UNAUTHORIZED || status == HttpServletResponse.SC_FORBIDDEN) {
                 log.warn("[SECURITE-AUDIT] Tentative d'accès refusée - statut={} - méthode={} - URI={} - utilisateur={}",
-                        status, httpRequest.getMethod(), httpRequest.getRequestURI(), utilisateurCourant());
+                        status, httpRequest.getMethod(), httpRequest.getRequestURI(), utilisateurCourant(httpRequest));
             }
             MDC.remove(MDC_REQUEST_ID);
         }
     }
 
-    private String utilisateurCourant() {
+    private String utilisateurCourant(HttpServletRequest request) {
+        Object utilisateur = request.getAttribute(ATTRIBUT_UTILISATEUR);
+        if (utilisateur != null) {
+            return utilisateur.toString();
+        }
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated()
                 && auth.getPrincipal() != null

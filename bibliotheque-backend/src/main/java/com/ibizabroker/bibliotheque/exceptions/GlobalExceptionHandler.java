@@ -1,5 +1,6 @@
 package com.ibizabroker.bibliotheque.exceptions;
 
+import com.ibizabroker.bibliotheque.configuration.SecurityAuditFilter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.mapping.PropertyReferenceException;
@@ -7,11 +8,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.ConstraintViolationException;
 import java.util.HashMap;
 import java.util.Map;
@@ -31,7 +36,8 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(ForbiddenException.class)
-    public ResponseEntity<Map<String, String>> handleForbidden(ForbiddenException ex) {
+    public ResponseEntity<Map<String, String>> handleForbidden(ForbiddenException ex, HttpServletRequest request) {
+        journaliserRefus(request, ex.getMessage());
         return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage());
     }
 
@@ -86,9 +92,28 @@ public class GlobalExceptionHandler {
         return handleGeneric(ex);
     }
 
+    // Refus de @PreAuthorize (rôle insuffisant, RS-02) : levé dans le contrôleur,
+    // il n'atteint jamais LoggingAccessDeniedHandler, d'où la journalisation ici.
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<Map<String, String>> handleAccessDenied(AccessDeniedException ex) {
+    public ResponseEntity<Map<String, String>> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+        journaliserRefus(request, "rôle insuffisant");
         return buildResponse(HttpStatus.FORBIDDEN, "Accès refusé");
+    }
+
+    /**
+     * Journalise un refus 403 avec l'utilisateur authentifié. Le contexte de
+     * sécurité est encore disponible ici, mais plus dans SecurityAuditFilter
+     * (qui entoure la chaîne Spring Security) : on lui transmet donc le nom
+     * par un attribut de requête.
+     */
+    private void journaliserRefus(HttpServletRequest request, String motif) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String utilisateur = auth != null && auth.isAuthenticated() && !(auth instanceof AnonymousAuthenticationToken)
+                ? auth.getName()
+                : "anonyme";
+        request.setAttribute(SecurityAuditFilter.ATTRIBUT_UTILISATEUR, utilisateur);
+        log.warn("[SECURITE] Accès refusé [403] - {} {} - Utilisateur: {} - Motif: {}",
+                request.getMethod(), request.getRequestURI(), utilisateur, motif);
     }
 
     @ExceptionHandler(Exception.class)

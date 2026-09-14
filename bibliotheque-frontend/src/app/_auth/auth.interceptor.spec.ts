@@ -7,12 +7,14 @@ import { of, throwError } from 'rxjs';
 
 import { AuthInterceptor } from './auth.interceptor';
 import { UserAuthService } from '../_service/user-auth.service';
+import { NotificationService } from '../_service/notification.service';
 
 describe('AuthInterceptor', () => {
   let interceptor: AuthInterceptor;
   let userAuthService: UserAuthService;
   let router: Router;
   let handler: jasmine.SpyObj<HttpHandler>;
+  let notificationService: jasmine.SpyObj<NotificationService>;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -20,7 +22,8 @@ describe('AuthInterceptor', () => {
     });
     userAuthService = TestBed.inject(UserAuthService);
     router = TestBed.inject(Router);
-    interceptor = new AuthInterceptor(userAuthService, router);
+    notificationService = jasmine.createSpyObj('NotificationService', ['showWarning']);
+    interceptor = new AuthInterceptor(userAuthService, router, notificationService);
     handler = jasmine.createSpyObj('HttpHandler', ['handle']);
     localStorage.clear();
   });
@@ -69,6 +72,35 @@ describe('AuthInterceptor', () => {
     });
 
     expect(router.navigate).toHaveBeenCalledWith(['/login']);
+  });
+
+  it('jeton expiré (401) : efface la session et affiche le message d’expiration du backend', () => {
+    userAuthService.setToken('jeton-expire');
+    userAuthService.setRoles([{ roleName: 'ADHERENT' }]);
+    spyOn(router, 'navigate');
+    handler.handle.and.returnValue(throwError(() => new HttpErrorResponse({
+      status: 401,
+      error: { message: 'Votre session a expiré. Veuillez vous reconnecter.' }
+    })));
+
+    interceptor.intercept(new HttpRequest('GET', '/api/reservations'), handler).subscribe({
+      error: () => undefined
+    });
+
+    expect(userAuthService.getToken()).toBeNull();
+    expect(notificationService.showWarning).toHaveBeenCalledWith('Votre session a expiré. Veuillez vous reconnecter.');
+    expect(router.navigate).toHaveBeenCalledWith(['/login']);
+  });
+
+  it('401 au login (requête No-Auth) : pas de message d’expiration de session', () => {
+    spyOn(router, 'navigate');
+    handler.handle.and.returnValue(throwError(() => new HttpErrorResponse({ status: 401 })));
+    const login = new HttpRequest('POST', '/realms/bibliotheque/token', {})
+      .clone({ setHeaders: { 'No-Auth': 'True' } });
+
+    interceptor.intercept(login, handler).subscribe({ error: () => undefined });
+
+    expect(notificationService.showWarning).not.toHaveBeenCalled();
   });
 
   it('redirige vers /forbidden sur une erreur 403', () => {

@@ -3,13 +3,15 @@ import { Router } from '@angular/router';
 import { catchError } from 'rxjs/operators';
 import { Observable, throwError } from 'rxjs';
 import { UserAuthService } from '../_service/user-auth.service';
+import { NotificationService } from '../_service/notification.service';
 import { Injectable } from '@angular/core';
 
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
   constructor(
     private userAuthService: UserAuthService,
-    private router:Router
+    private router:Router,
+    private notificationService: NotificationService
   ) {}
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
@@ -36,7 +38,15 @@ export class AuthInterceptor implements HttpInterceptor {
             (err:HttpErrorResponse) => {
                 if(err.status === 401) {
                     // Jeton expiré ou refusé : la session locale n'est plus valable.
+                    // On prévient l'utilisateur (message du backend, ex. « Votre session
+                    // a expiré ») seulement s'il était connecté : un mauvais mot de
+                    // passe au login (requête No-Auth) a son propre message.
+                    const sessionPerdue = !noAuth && !!this.userAuthService.getToken();
                     this.userAuthService.clear();
+                    if (sessionPerdue) {
+                        this.notificationService.showWarning(
+                            err.error?.message || 'Votre session a expiré. Veuillez vous reconnecter.');
+                    }
                     this.router.navigate(['/login']);
                 } else if(err.status === 403) {
                     this.router.navigate(['/forbidden']);

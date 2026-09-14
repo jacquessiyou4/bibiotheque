@@ -9,7 +9,9 @@ export interface Notification {
   message: string;
 }
 
-const DUREE_AFFICHAGE_MS = 4000;
+// 10 s : assez long pour lire le message après la redirection vers la page
+// de connexion (ex. « Jeton invalide ou expiré »), qui est quasi immédiate.
+const DUREE_AFFICHAGE_MS = 10000;
 
 /**
  * Notifications affichées en haut à droite de l'écran (voir

@@ -1,12 +1,13 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormsModule } from '@angular/forms';
 import { By } from '@angular/platform-browser';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
-import { BorrowListComponent, BorrowRow } from './borrow-list.component';
+import { BorrowListComponent } from './borrow-list.component';
 import { BorrowService } from '../_service/borrow.service';
 import { BooksService } from '../_service/books.service';
 import { UsersService } from '../_service/users.service';
+import { NotificationService } from '../_service/notification.service';
 import { Books } from '../_model/books';
 import { Borrow } from '../_model/borrow';
 import { Users } from '../_model/users';
@@ -19,11 +20,13 @@ describe('BorrowListComponent', () => {
   let borrowServiceSpy: jasmine.SpyObj<BorrowService>;
   let booksServiceSpy: jasmine.SpyObj<BooksService>;
   let usersServiceSpy: jasmine.SpyObj<UsersService>;
+  let notificationSpy: jasmine.SpyObj<NotificationService>;
 
   beforeEach(async () => {
     borrowServiceSpy = jasmine.createSpyObj('BorrowService', ['getBorrowList']);
     booksServiceSpy = jasmine.createSpyObj('BooksService', ['getBooksList']);
     usersServiceSpy = jasmine.createSpyObj('UsersService', ['getUsersList']);
+    notificationSpy = jasmine.createSpyObj('NotificationService', ['showError']);
 
     await TestBed.configureTestingModule({
       imports: [FormsModule],
@@ -32,6 +35,7 @@ describe('BorrowListComponent', () => {
         { provide: BorrowService, useValue: borrowServiceSpy },
         { provide: BooksService, useValue: booksServiceSpy },
         { provide: UsersService, useValue: usersServiceSpy },
+        { provide: NotificationService, useValue: notificationSpy },
         { provide: TranslationService, useValue: { translate: (key: string) => key } },
       ]
     }).compileComponents();
@@ -60,7 +64,7 @@ describe('BorrowListComponent', () => {
     b.bookId = bookId;
     b.issueDate = new Date();
     b.dueDate = new Date();
-        b.returnDate = returnDate as Date;
+    b.returnDate = returnDate as Date;
     return b;
   }
 
@@ -82,8 +86,8 @@ describe('BorrowListComponent', () => {
     expect(disponibles[0].borrowerName).toBe('—');
   });
 
-  it('retourne le nom de l\u2019emprunteur du référentiel utilisateurs', () => {
-        const enCours = component.rows.find(r => r.borrowId === 10);
+  it('retourne le nom de l’emprunteur du référentiel utilisateurs', () => {
+    const enCours = component.rows.find(r => r.borrowId === 10);
     expect(enCours!.borrowerName).toBe('Adherent Un');
   });
 
@@ -100,5 +104,40 @@ describe('BorrowListComponent', () => {
   it('rend la ligne de chaque emprunt dans le tableau', () => {
     const lignes = fixture.debugElement.queryAll(By.css('tbody tr'));
     expect(lignes.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('garde telles quelles les dates déjà formatées par le backend (dd-MM-yyyy)', () => {
+    borrowServiceSpy.getBorrowList.and.returnValue(of([
+      { borrowId: 20, bookId: 1, userId: 1, issueDate: '01-09-2026', dueDate: '08-09-2026', returnDate: null } as Borrow
+    ]));
+
+    const autre = TestBed.createComponent(BorrowListComponent);
+    autre.detectChanges();
+
+    const ligne = autre.componentInstance.rows.find(r => r.borrowId === 20)!;
+    expect(ligne.issueDate).toBe('01-09-2026');
+    expect(ligne.dueDate).toBe('08-09-2026');
+    expect(ligne.returnDate).toBeNull();
+  });
+
+  it('utilise un libellé de repli pour un livre ou un emprunteur absent des référentiels', () => {
+    borrowServiceSpy.getBorrowList.and.returnValue(of([emprunt(30, 99, 42, null)]));
+
+    const autre = TestBed.createComponent(BorrowListComponent);
+    autre.detectChanges();
+
+    const ligne = autre.componentInstance.rows.find(r => r.borrowId === 30)!;
+    expect(ligne.bookName).toBe('Livre #42');
+    expect(ligne.borrowerName).toBe('Utilisateur #99');
+  });
+
+  it('signale une erreur si l’un des chargements échoue', () => {
+    usersServiceSpy.getUsersList.and.returnValue(throwError(() => new Error('403')));
+
+    const autre = TestBed.createComponent(BorrowListComponent);
+    autre.detectChanges();
+
+    expect(notificationSpy.showError).toHaveBeenCalledWith('Erreur de chargement des emprunts');
+    expect(autre.componentInstance.rows).toEqual([]);
   });
 });

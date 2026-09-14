@@ -13,8 +13,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.mapping.PropertyReferenceException;
+import org.springframework.data.util.ClassTypeInformation;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -33,6 +36,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -225,6 +229,125 @@ class UsersAdminApiIntegrationTest {
                 .andExpect(jsonPath("$.name").value("Nom Modifié"))
                 .andExpect(jsonPath("$.username").value("A1-modifié"))
                 .andExpect(jsonPath("$.roles[0]").value("Admin"));
+    }
+
+    @Test
+    void avecTokenAdmin_putUserInconnu_renvoie404EtNeSauvegardeRien() throws Exception {
+        mockMvc.perform(put("/admin/users/999")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN_ADMIN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"X\",\"name\":\"X\"}"))
+                .andExpect(status().isNotFound());
+
+        verify(usersRepository, never()).save(any(Users.class));
+    }
+
+    @Test
+    void avecTokenAdmin_putUserAvecMotDePasse_encodeLeNouveauMotDePasse() throws Exception {
+        mockMvc.perform(put("/admin/users/1")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN_ADMIN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"A1\",\"name\":\"A1\",\"password\":\"nouveau-secret\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.password").doesNotExist());
+
+        ArgumentCaptor<Users> sauvegarde = ArgumentCaptor.forClass(Users.class);
+        verify(usersRepository).save(sauvegarde.capture());
+        assertThat(passwordEncoder.matches("nouveau-secret", sauvegarde.getValue().getPassword())).isTrue();
+    }
+
+    @Test
+    void avecTokenAdmin_putUserSansMotDePasse_conserveLAncienHash() throws Exception {
+        mockMvc.perform(put("/admin/users/1")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN_ADMIN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"A1\",\"name\":\"A1\"}"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<Users> sauvegarde = ArgumentCaptor.forClass(Users.class);
+        verify(usersRepository).save(sauvegarde.capture());
+        assertThat(sauvegarde.getValue().getPassword()).isEqualTo("hash-bcrypt");
+    }
+
+    @Test
+    void avecTokenAdmin_postUserSansUsername_renvoie400DeValidation() throws Exception {
+        mockMvc.perform(post("/admin/users")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN_ADMIN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Sans Username\",\"password\":\"secret1\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.username").exists());
+
+        verify(usersRepository, never()).save(any(Users.class));
+    }
+
+    // ------------------------------------------------------------------
+    // Unicité du username (il identifie le compte Keycloak) -> 409
+    // ------------------------------------------------------------------
+    @Test
+    void avecTokenAdmin_postUserAvecUsernameDejaUtilise_renvoie409EtNeSauvegardeRien() throws Exception {
+        when(usersRepository.findByUsername("A1")).thenReturn(Optional.of(adherent));
+
+        mockMvc.perform(post("/admin/users")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN_ADMIN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"A1\",\"name\":\"Doublon\",\"password\":\"secret1\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(containsString("déjà utilisé")));
+
+        verify(usersRepository, never()).save(any(Users.class));
+    }
+
+    @Test
+    void avecTokenAdmin_putUserAvecLeUsernameDUnAutre_renvoie409EtNeSauvegardeRien() throws Exception {
+        when(usersRepository.findByUsername("admin")).thenReturn(Optional.of(bibliothecaire));
+
+        mockMvc.perform(put("/admin/users/1")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN_ADMIN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"name\":\"Usurpation\"}"))
+                .andExpect(status().isConflict());
+
+        verify(usersRepository, never()).save(any(Users.class));
+    }
+
+    @Test
+    void avecTokenAdmin_putUserEnGardantSonPropreUsername_renvoie200() throws Exception {
+        when(usersRepository.findByUsername("A1")).thenReturn(Optional.of(adherent));
+
+        mockMvc.perform(put("/admin/users/1")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN_ADMIN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"A1\",\"name\":\"Nouveau Nom\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Nouveau Nom"));
+    }
+
+    // ------------------------------------------------------------------
+    // Tri sur une propriété inconnue -> 400 (et non 500)
+    // ------------------------------------------------------------------
+    @Test
+    void avecTokenAdmin_getUsersTriSurProprieteInconnue_renvoie400() throws Exception {
+        when(usersRepository.findAll(any(Pageable.class))).thenThrow(
+                new PropertyReferenceException("inexistant", ClassTypeInformation.from(Users.class), Collections.emptyList()));
+
+        mockMvc.perform(get("/admin/users").param("sortBy", "inexistant")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN_ADMIN))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(containsString("inexistant")));
+    }
+
+    @Test
+    void avecTokenAdmin_getUsersTriInconnuEnveloppeParJpa_renvoie400() throws Exception {
+        PropertyReferenceException cause =
+                new PropertyReferenceException("inexistant", ClassTypeInformation.from(Users.class), Collections.emptyList());
+        when(usersRepository.findAll(any(Pageable.class)))
+                .thenThrow(new InvalidDataAccessApiUsageException(cause.getMessage(), cause));
+
+        mockMvc.perform(get("/admin/users").param("sortBy", "inexistant")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN_ADMIN))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(containsString("inexistant")));
     }
 
     // ------------------------------------------------------------------

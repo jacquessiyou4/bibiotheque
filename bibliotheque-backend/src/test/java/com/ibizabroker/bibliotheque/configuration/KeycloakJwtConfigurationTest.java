@@ -4,7 +4,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 
@@ -41,11 +42,72 @@ class KeycloakJwtConfigurationTest {
 
             java.lang.reflect.Field issuerInternalField = KeycloakJwtConfiguration.class.getDeclaredField("issuerInternal");
             issuerInternalField.setAccessible(true);
-            issuerInternalField.set(config, "http://localhost:9999/realms/bibliotheque");
+            // Valeur distincte de l'issuer local, pour vérifier que les DEUX sont acceptés.
+            issuerInternalField.set(config, ISSUER_INTERNE);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
         converter = config.jwtAuthenticationConverter();
+    }
+
+    private static final String ISSUER_LOCAL = "http://localhost:9999/realms/bibliotheque";
+    private static final String ISSUER_INTERNE = "http://keycloak:8080/realms/bibliotheque";
+
+    // ------------------------------------------------------------------
+    // Validation de l'issuer : seul le realm de l'application est accepté
+    // ------------------------------------------------------------------
+    @Test
+    void issuerValidator_accepteLIssuerVuParLeNavigateur() {
+        OAuth2TokenValidatorResult resultat = config.issuerValidator().validate(jwtAvecIssuer(ISSUER_LOCAL));
+
+        assertThat(resultat.hasErrors()).isFalse();
+    }
+
+    @Test
+    void issuerValidator_accepteLIssuerInterneDuReseauDocker() {
+        OAuth2TokenValidatorResult resultat = config.issuerValidator().validate(jwtAvecIssuer(ISSUER_INTERNE));
+
+        assertThat(resultat.hasErrors()).isFalse();
+    }
+
+    @Test
+    void issuerValidator_refuseUnJetonDUnAutreRealmOuServeur() {
+        OAuth2TokenValidatorResult resultat = config.issuerValidator()
+                .validate(jwtAvecIssuer("http://pirate.example/realms/bibliotheque"));
+
+        assertThat(resultat.hasErrors()).isTrue();
+        OAuth2Error erreur = resultat.getErrors().iterator().next();
+        assertThat(erreur.getErrorCode()).isEqualTo("invalid_iss");
+        assertThat(erreur.getDescription()).contains("pirate.example");
+    }
+
+    @Test
+    void issuerValidator_refuseUnJetonSansIssuer() {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("sub", "A1");
+        Jwt sansIssuer = new Jwt("token", Instant.now(), Instant.now().plusSeconds(300),
+                Collections.singletonMap("alg", "none"), claims);
+
+        OAuth2TokenValidatorResult resultat = config.issuerValidator().validate(sansIssuer);
+
+        assertThat(resultat.hasErrors()).isTrue();
+        assertThat(resultat.getErrors().iterator().next().getErrorCode()).isEqualTo("invalid_iss");
+    }
+
+    @Test
+    void jwtDecoder_seConstruitSansContacterKeycloak() {
+        // Les clés JWKS ne sont téléchargées qu'au premier décodage.
+        JwtDecoder decoder = config.jwtDecoder();
+
+        assertThat(decoder).isNotNull();
+    }
+
+    private Jwt jwtAvecIssuer(String issuer) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("sub", "A1");
+        claims.put("iss", issuer);
+        return new Jwt("token", Instant.now(), Instant.now().plusSeconds(300),
+                Collections.singletonMap("alg", "none"), claims);
     }
 
     @Test

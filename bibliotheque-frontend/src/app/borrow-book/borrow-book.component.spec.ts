@@ -8,6 +8,7 @@ import { TranslationService } from '../_service/translation.service';
 import { BooksService } from '../_service/books.service';
 import { BorrowService } from '../_service/borrow.service';
 import { UserAuthService } from '../_service/user-auth.service';
+import { NotificationService } from '../_service/notification.service';
 import { Books } from '../_model/books';
 
 describe('BorrowBookComponent', () => {
@@ -15,10 +16,12 @@ describe('BorrowBookComponent', () => {
   let fixture: ComponentFixture<BorrowBookComponent>;
   let booksServiceSpy: jasmine.SpyObj<BooksService>;
   let borrowServiceSpy: jasmine.SpyObj<BorrowService>;
+  let notificationSpy: jasmine.SpyObj<NotificationService>;
 
   beforeEach(async () => {
     booksServiceSpy = jasmine.createSpyObj('BooksService', ['getBooksList']);
     borrowServiceSpy = jasmine.createSpyObj('BorrowService', ['borrowBook']);
+    notificationSpy = jasmine.createSpyObj('NotificationService', ['showSuccess', 'showError']);
 
     await TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
@@ -28,6 +31,7 @@ describe('BorrowBookComponent', () => {
         { provide: BooksService, useValue: booksServiceSpy },
         { provide: BorrowService, useValue: borrowServiceSpy },
         { provide: UserAuthService, useValue: { getUserId: () => 1 } as never },
+        { provide: NotificationService, useValue: notificationSpy },
       ]
     })
     .compileComponents();
@@ -50,7 +54,7 @@ describe('BorrowBookComponent', () => {
     expect(component.books[0].bookId).toBe(3);
   });
 
-  it('borrowBook envoie l\u2019emprunt avec l\u2019userId du jeton et le bookId cliqué', () => {
+  it('borrowBook envoie l’emprunt avec l’userId du jeton et le bookId cliqué', () => {
     borrowServiceSpy.borrowBook.and.returnValue(of('message'));
 
     component.borrowBook(3);
@@ -59,9 +63,50 @@ describe('BorrowBookComponent', () => {
       jasmine.objectContaining({ bookId: 3, userId: 1 }));
   });
 
-  it('borrowBook gère l\u2019erreur en cas d\u2019échec', () => {
+  it('borrowBook réussi : confirme l’emprunt et recharge le catalogue (stock à jour)', () => {
+    borrowServiceSpy.borrowBook.and.returnValue(of('Adhérent Un a emprunté une copie de "L2" !'));
+
+    component.borrowBook(3);
+
+    expect(notificationSpy.showSuccess).toHaveBeenCalledWith('Emprunt réussi');
+    expect(booksServiceSpy.getBooksList).toHaveBeenCalledTimes(2);
+  });
+
+  it('borrowBook refusé : affiche le message du backend (ex. stock épuisé)', () => {
+    borrowServiceSpy.borrowBook.and.returnValue(throwError(() => ({
+      status: 400, error: { message: 'Le livre "L2" n\'est plus disponible.' }
+    })));
+
+    component.borrowBook(3);
+
+    expect(notificationSpy.showError).toHaveBeenCalledWith('Le livre "L2" n\'est plus disponible.');
+    expect(booksServiceSpy.getBooksList).toHaveBeenCalledTimes(1);
+  });
+
+  it('borrowBook gère l’erreur en cas d’échec sans message du backend', () => {
     borrowServiceSpy.borrowBook.and.returnValue(throwError(() => new Error('Échec')));
 
     expect(() => component.borrowBook(3)).not.toThrow();
+
+    expect(notificationSpy.showError).toHaveBeenCalledWith('Erreur lors de l\'emprunt');
+  });
+
+  it('borrowBook sans utilisateur connu n’invente pas d’userId', () => {
+    component.userId = null;
+    borrowServiceSpy.borrowBook.and.returnValue(of('message'));
+
+    component.borrowBook(3);
+
+    const emprunt = borrowServiceSpy.borrowBook.calls.mostRecent().args[0];
+    expect(emprunt.bookId).toBe(3);
+    expect(emprunt.userId).toBeUndefined();
+  });
+
+  it('signale une erreur si le catalogue ne peut pas être chargé', () => {
+    booksServiceSpy.getBooksList.and.returnValue(throwError(() => new Error('500')));
+
+    TestBed.createComponent(BorrowBookComponent).detectChanges();
+
+    expect(notificationSpy.showError).toHaveBeenCalledWith('Erreur de chargement des livres');
   });
 });

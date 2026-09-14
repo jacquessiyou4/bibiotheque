@@ -3,27 +3,31 @@ import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { Router } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
 import { FormsModule } from '@angular/forms';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 import { CreateBookComponent } from './create-book.component';
 import { TranslatePipe } from '../_i18n/translate.pipe';
 import { TranslationService } from '../_service/translation.service';
 import { BooksService } from '../_service/books.service';
+import { NotificationService } from '../_service/notification.service';
 
 describe('CreateBookComponent', () => {
   let component: CreateBookComponent;
   let fixture: ComponentFixture<CreateBookComponent>;
   let booksServiceSpy: jasmine.SpyObj<BooksService>;
+  let notificationSpy: jasmine.SpyObj<NotificationService>;
   let router: Router;
 
   beforeEach(async () => {
     booksServiceSpy = jasmine.createSpyObj('BooksService', ['createBook']);
+    notificationSpy = jasmine.createSpyObj('NotificationService', ['showError']);
     await TestBed.configureTestingModule({
       imports: [RouterTestingModule, HttpClientTestingModule, FormsModule],
       declarations: [ CreateBookComponent, TranslatePipe ],
       providers: [
         { provide: TranslationService, useValue: { translate: (key: string) => key } },
         { provide: BooksService, useValue: booksServiceSpy },
+        { provide: NotificationService, useValue: notificationSpy },
       ]
     })
     .compileComponents();
@@ -66,5 +70,15 @@ describe('CreateBookComponent', () => {
     expect(livreEnvoyé.bookAuthor).toBe('Auteur');
     expect(livreEnvoyé.bookGenre).toBe('Roman');
     expect(livreEnvoyé.noOfCopies).toBe(1);
+  });
+
+  it('onSubmit signale l’échec de la création et reste sur le formulaire', () => {
+    booksServiceSpy.createBook.and.returnValue(throwError(() => new Error('400')));
+    spyOn(router, 'navigate');
+
+    component.onSubmit();
+
+    expect(notificationSpy.showError).toHaveBeenCalledWith('Erreur lors de la création du livre');
+    expect(router.navigate).not.toHaveBeenCalled();
   });
 });

@@ -1,11 +1,17 @@
 import { TestBed } from '@angular/core/testing';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import { NgForm } from '@angular/forms';
 import { UsersService } from './users.service';
 import { UserAuthService } from './user-auth.service';
+import { Users } from '../_model/users';
 
 describe('UsersService', () => {
+  const API = 'http://localhost:8080';
+  const KEYCLOAK_TOKEN = 'http://localhost:8081/realms/bibliotheque/protocol/openid-connect/token';
+
   let service: UsersService;
   let userAuthService: UserAuthService;
+  let httpMock: HttpTestingController;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -13,9 +19,11 @@ describe('UsersService', () => {
     });
     service = TestBed.inject(UsersService);
     userAuthService = TestBed.inject(UserAuthService);
+    httpMock = TestBed.inject(HttpTestingController);
   });
 
   afterEach(() => {
+    httpMock.verify();
     localStorage.clear();
   });
 
@@ -45,6 +53,124 @@ describe('UsersService', () => {
     it('retourne faux quand aucun rôle n est stocké', () => {
       localStorage.removeItem('roles');
       expect(service.roleMatch(['ADHERENT'])).toBeFalse();
+    });
+  });
+
+  describe('login (Keycloak)', () => {
+    const formulaire = { value: { username: 'A1', password: 'A1123' } } as NgForm;
+
+    it('envoie un « password grant » au realm bibliotheque avec le client frontend', () => {
+      let reponse: any;
+      service.login(formulaire).subscribe(r => reponse = r);
+
+      const req = httpMock.expectOne(KEYCLOAK_TOKEN);
+      expect(req.request.method).toBe('POST');
+      const corps = req.request.body.toString();
+      expect(corps).toContain('grant_type=password');
+      expect(corps).toContain('client_id=bibliotheque-frontend');
+      expect(corps).toContain('username=A1');
+      expect(corps).toContain('password=A1123');
+      expect(req.request.headers.get('Content-Type')).toBe('application/x-www-form-urlencoded');
+      req.flush({ access_token: 'jeton-keycloak' });
+
+      expect(reponse.access_token).toBe('jeton-keycloak');
+    });
+
+    it('marque la requête No-Auth : aucun ancien jeton n’est envoyé à Keycloak', () => {
+      service.login(formulaire).subscribe();
+
+      const req = httpMock.expectOne(KEYCLOAK_TOKEN);
+      expect(req.request.headers.get('No-Auth')).toBe('True');
+      req.flush({});
+    });
+  });
+
+  describe('API utilisateurs', () => {
+    it('getMe appelle GET /me pour l’utilisateur local du jeton', () => {
+      let moi: any;
+      service.getMe().subscribe(r => moi = r);
+
+      const req = httpMock.expectOne(`${API}/me`);
+      expect(req.request.method).toBe('GET');
+      req.flush({ userId: 2, name: 'Adhérent Un' });
+
+      expect(moi.userId).toBe(2);
+    });
+
+    it('getUsersList demande une page complète et convertit les rôles en objets', () => {
+      let utilisateurs: Users[] = [];
+      service.getUsersList().subscribe(u => utilisateurs = u);
+
+      const req = httpMock.expectOne(`${API}/admin/users?size=1000`);
+      expect(req.request.method).toBe('GET');
+      req.flush({
+        content: [{ userId: 2, username: 'a1', name: 'Adhérent Un', roles: ['User', 'ADHERENT'] }],
+        totalElements: 1, totalPages: 1, number: 0, size: 1000
+      });
+
+      expect(utilisateurs.length).toBe(1);
+      expect(utilisateurs[0].username).toBe('a1');
+      expect(utilisateurs[0].role).toEqual([{ roleName: 'User' }, { roleName: 'ADHERENT' }]);
+      expect(utilisateurs[0].password).toBe('');
+    });
+
+    it('getUsersList tolère un utilisateur sans rôles', () => {
+      let utilisateurs: Users[] = [];
+      service.getUsersList().subscribe(u => utilisateurs = u);
+
+      httpMock.expectOne(`${API}/admin/users?size=1000`).flush({
+        content: [{ userId: 5, username: 'sans-role', name: 'Sans Rôle', roles: null }],
+        totalElements: 1, totalPages: 1, number: 0, size: 1000
+      });
+
+      expect(utilisateurs[0].role).toEqual([]);
+    });
+
+    it('getUserById appelle GET /admin/users/{id} et convertit la réponse', () => {
+      let utilisateur: Users | undefined;
+      service.getUserById(3).subscribe(u => utilisateur = u);
+
+      const req = httpMock.expectOne(`${API}/admin/users/3`);
+      expect(req.request.method).toBe('GET');
+      req.flush({ userId: 3, username: 'a2', name: 'Adhérent Deux', roles: ['ADHERENT'] });
+
+      expect(utilisateur!.name).toBe('Adhérent Deux');
+      expect(utilisateur!.role).toEqual([{ roleName: 'ADHERENT' }]);
+    });
+
+    it('createUser envoie POST /admin/users avec le formulaire saisi', () => {
+      const nouveau = { username: 'nouveau', name: 'Nouveau', password: 'secret1', roles: ['User'] };
+      service.createUser(nouveau).subscribe();
+
+      const req = httpMock.expectOne(`${API}/admin/users`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual(nouveau);
+      req.flush({});
+    });
+
+    it('updateUser sans nouveau mot de passe n’envoie pas le champ password', () => {
+      const utilisateur: Users = {
+        userId: 3, username: 'a2', name: 'Nom Modifié', password: '', role: [{ roleName: 'Admin' }]
+      };
+      service.updateUser(3, utilisateur).subscribe();
+
+      const req = httpMock.expectOne(`${API}/admin/users/3`);
+      expect(req.request.method).toBe('PUT');
+      expect(req.request.body).toEqual({ username: 'a2', name: 'Nom Modifié', roles: ['Admin'] });
+      expect('password' in req.request.body).toBeFalse();
+      req.flush({});
+    });
+
+    it('updateUser avec un nouveau mot de passe l’envoie au backend', () => {
+      const utilisateur: Users = {
+        userId: 3, username: 'a2', name: 'A2', password: 'nouveau-secret', role: []
+      };
+      service.updateUser(3, utilisateur).subscribe();
+
+      const req = httpMock.expectOne(`${API}/admin/users/3`);
+      expect(req.request.body.password).toBe('nouveau-secret');
+      expect(req.request.body.roles).toEqual([]);
+      req.flush({});
     });
   });
 });

@@ -8,6 +8,7 @@ import { TranslationService } from '../_service/translation.service';
 import { BorrowService } from '../_service/borrow.service';
 import { BooksService } from '../_service/books.service';
 import { UserAuthService } from '../_service/user-auth.service';
+import { NotificationService } from '../_service/notification.service';
 import { Borrow } from '../_model/borrow';
 import { Books } from '../_model/books';
 
@@ -16,6 +17,7 @@ describe('ReturnBookComponent', () => {
   let fixture: ComponentFixture<ReturnBookComponent>;
   let borrowServiceSpy: jasmine.SpyObj<BorrowService>;
   let booksServiceSpy: jasmine.SpyObj<BooksService>;
+  let notificationSpy: jasmine.SpyObj<NotificationService>;
 
   const mockBorrows: Borrow[] = [
     { borrowId: 7, bookId: 3, userId: 1, issueDate: new Date(), returnDate: null, dueDate: new Date() },
@@ -28,6 +30,7 @@ describe('ReturnBookComponent', () => {
     borrowServiceSpy = jasmine.createSpyObj('BorrowService',
       ['getBooksBorrowedByUser', 'returnBook']);
     booksServiceSpy = jasmine.createSpyObj('BooksService', ['getBooksList']);
+    notificationSpy = jasmine.createSpyObj('NotificationService', ['showSuccess', 'showError']);
 
     await TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
@@ -37,6 +40,7 @@ describe('ReturnBookComponent', () => {
         { provide: BorrowService, useValue: borrowServiceSpy },
         { provide: BooksService, useValue: booksServiceSpy },
         { provide: UserAuthService, useValue: { getUserId: () => 1 } as never },
+        { provide: NotificationService, useValue: notificationSpy },
       ]
     })
     .compileComponents();
@@ -53,7 +57,7 @@ describe('ReturnBookComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('charge au démarrage la liste des emprunts de l\u2019utilisateur connecté', () => {
+  it('charge au démarrage la liste des emprunts de l’utilisateur connecté', () => {
     expect(borrowServiceSpy.getBooksBorrowedByUser).toHaveBeenCalledWith(1);
     expect(component.borrow.length).toBe(1);
     expect(component.borrow[0].borrowId).toBe(7);
@@ -73,9 +77,56 @@ describe('ReturnBookComponent', () => {
     expect(borrowServiceSpy.returnBook).toHaveBeenCalledWith(jasmine.objectContaining({ borrowId: 7 }));
   });
 
-  it('returnBook gère l\u2019erreur en cas d\u2019échec', () => {
+  it('returnBook réussi : confirme le retour et recharge les emprunts (bouton « Rendre » retiré)', () => {
+    borrowServiceSpy.returnBook.and.returnValue(of({ borrowId: 7 }));
+
+    component.returnBook(7);
+
+    expect(notificationSpy.showSuccess).toHaveBeenCalledWith('Retour réussi');
+    expect(borrowServiceSpy.getBooksBorrowedByUser).toHaveBeenCalledTimes(2);
+  });
+
+  it('returnBook refusé : affiche le message du backend (ex. emprunt déjà rendu)', () => {
+    borrowServiceSpy.returnBook.and.returnValue(throwError(() => ({
+      status: 400, error: { message: 'Cet emprunt a déjà été rendu.' }
+    })));
+
+    component.returnBook(7);
+
+    expect(notificationSpy.showError).toHaveBeenCalledWith('Cet emprunt a déjà été rendu.');
+    expect(borrowServiceSpy.getBooksBorrowedByUser).toHaveBeenCalledTimes(1);
+  });
+
+  it('returnBook gère l’erreur en cas d’échec sans message du backend', () => {
     borrowServiceSpy.returnBook.and.returnValue(throwError(() => new Error('Erreur')));
 
     expect(() => component.returnBook(7)).not.toThrow();
+
+    expect(notificationSpy.showError).toHaveBeenCalledWith('Erreur lors du retour');
+  });
+
+  it('ne charge aucun emprunt si l’utilisateur connecté est inconnu', () => {
+    borrowServiceSpy.getBooksBorrowedByUser.calls.reset();
+    component.userId = null;
+
+    component.ngOnInit();
+
+    expect(borrowServiceSpy.getBooksBorrowedByUser).not.toHaveBeenCalled();
+  });
+
+  it('signale une erreur si les emprunts ne peuvent pas être chargés', () => {
+    borrowServiceSpy.getBooksBorrowedByUser.and.returnValue(throwError(() => new Error('403')));
+
+    TestBed.createComponent(ReturnBookComponent).detectChanges();
+
+    expect(notificationSpy.showError).toHaveBeenCalledWith('Erreur de chargement des emprunts');
+  });
+
+  it('signale une erreur si les livres ne peuvent pas être chargés', () => {
+    booksServiceSpy.getBooksList.and.returnValue(throwError(() => new Error('500')));
+
+    TestBed.createComponent(ReturnBookComponent).detectChanges();
+
+    expect(notificationSpy.showError).toHaveBeenCalledWith('Erreur de chargement des livres');
   });
 });

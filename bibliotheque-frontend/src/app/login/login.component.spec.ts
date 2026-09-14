@@ -1,27 +1,33 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
 import { FormsModule } from '@angular/forms';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 import { LoginComponent } from './login.component';
 import { TranslatePipe } from '../_i18n/translate.pipe';
 import { TranslationService } from '../_service/translation.service';
 import { UsersService } from '../_service/users.service';
 import { UserAuthService } from '../_service/user-auth.service';
+import { NotificationService } from '../_service/notification.service';
 
 describe('LoginComponent', () => {
+  const MESSAGE_AUTRE_ECHEC = 'Connexion impossible : compte inconnu de l\'application ou serveur injoignable';
+
   let component: LoginComponent;
   let fixture: ComponentFixture<LoginComponent>;
   let usersServiceSpy: jasmine.SpyObj<UsersService>;
   let userAuthServiceSpy: jasmine.SpyObj<UserAuthService>;
+  let notificationSpy: jasmine.SpyObj<NotificationService>;
   let router: Router;
 
   beforeEach(async () => {
     usersServiceSpy = jasmine.createSpyObj('UsersService', ['login', 'getMe']);
     userAuthServiceSpy = jasmine.createSpyObj('UserAuthService',
-      ['decodeJwt', 'setRoles', 'setToken', 'setName', 'setUserId']);
+      ['decodeJwt', 'setRoles', 'setToken', 'setName', 'setUserId', 'clear']);
+    notificationSpy = jasmine.createSpyObj('NotificationService', ['showError']);
 
     await TestBed.configureTestingModule({
       imports: [RouterTestingModule, HttpClientTestingModule, FormsModule],
@@ -30,6 +36,7 @@ describe('LoginComponent', () => {
         { provide: TranslationService, useValue: { translate: (key: string) => key } },
         { provide: UsersService, useValue: usersServiceSpy },
         { provide: UserAuthService, useValue: userAuthServiceSpy },
+        { provide: NotificationService, useValue: notificationSpy },
       ]
     })
     .compileComponents();
@@ -86,5 +93,54 @@ describe('LoginComponent', () => {
     component.login({} as never);
 
     expect(router.navigate).toHaveBeenCalledWith(['/borrow-book']);
+  });
+
+  it('login avec un jeton sans rôles stocke une liste de rôles vide', () => {
+    usersServiceSpy.login.and.returnValue(of({ access_token: 'jeton-sans-role' }));
+    usersServiceSpy.getMe.and.returnValue(of({ userId: 4, name: 'Sans Rôle' }));
+    userAuthServiceSpy.decodeJwt.and.returnValue({ preferred_username: 'x' } as never);
+    spyOn(router, 'navigate');
+
+    component.login({} as never);
+
+    expect(userAuthServiceSpy.setRoles).toHaveBeenCalledWith([]);
+    expect(router.navigate).toHaveBeenCalledWith(['/borrow-book']);
+  });
+
+  describe('échecs de connexion', () => {
+    it('mauvais identifiants (401 Keycloak) : message dédié, session effacée, pas de navigation', () => {
+      usersServiceSpy.login.and.returnValue(throwError(() => new HttpErrorResponse({ status: 401 })));
+      spyOn(router, 'navigate');
+
+      component.login({} as never);
+
+      expect(userAuthServiceSpy.clear).toHaveBeenCalled();
+      expect(notificationSpy.showError).toHaveBeenCalledWith('Identifiants incorrects');
+      expect(router.navigate).not.toHaveBeenCalled();
+    });
+
+    it('compte Keycloak inconnu de l’application (/me en 404) : efface le jeton déjà stocké', () => {
+      usersServiceSpy.login.and.returnValue(of({ access_token: 'jeton-valide' }));
+      usersServiceSpy.getMe.and.returnValue(throwError(() => new HttpErrorResponse({ status: 404 })));
+      userAuthServiceSpy.decodeJwt.and.returnValue({ realm_access: { roles: ['User'] } } as never);
+      spyOn(router, 'navigate');
+
+      component.login({} as never);
+
+      // Le jeton et les rôles ont été stockés avant /me : ils doivent être effacés.
+      expect(userAuthServiceSpy.setToken).toHaveBeenCalledWith('jeton-valide');
+      expect(userAuthServiceSpy.clear).toHaveBeenCalled();
+      expect(notificationSpy.showError).toHaveBeenCalledWith(MESSAGE_AUTRE_ECHEC);
+      expect(router.navigate).not.toHaveBeenCalled();
+    });
+
+    it('serveur injoignable (statut 0) : message de connexion impossible', () => {
+      usersServiceSpy.login.and.returnValue(throwError(() => new HttpErrorResponse({ status: 0 })));
+
+      component.login({} as never);
+
+      expect(userAuthServiceSpy.clear).toHaveBeenCalled();
+      expect(notificationSpy.showError).toHaveBeenCalledWith(MESSAGE_AUTRE_ECHEC);
+    });
   });
 });

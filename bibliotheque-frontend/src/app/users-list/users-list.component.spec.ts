@@ -2,18 +2,20 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { RouterTestingModule } from '@angular/router/testing';
 import { Router } from '@angular/router';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 import { UsersListComponent } from './users-list.component';
 import { TranslatePipe } from '../_i18n/translate.pipe';
 import { TranslationService } from '../_service/translation.service';
 import { UsersService } from '../_service/users.service';
+import { NotificationService } from '../_service/notification.service';
 import { Users } from '../_model/users';
 
 describe('UsersListComponent', () => {
   let component: UsersListComponent;
   let fixture: ComponentFixture<UsersListComponent>;
   let usersServiceSpy: jasmine.SpyObj<UsersService>;
+  let notificationSpy: jasmine.SpyObj<NotificationService>;
   let router: Router;
 
   const mockUsers: Users[] = [
@@ -23,6 +25,7 @@ describe('UsersListComponent', () => {
 
   beforeEach(async () => {
     usersServiceSpy = jasmine.createSpyObj('UsersService', ['getUsersList']);
+    notificationSpy = jasmine.createSpyObj('NotificationService', ['showError']);
 
     await TestBed.configureTestingModule({
       imports: [RouterTestingModule, HttpClientTestingModule],
@@ -30,6 +33,7 @@ describe('UsersListComponent', () => {
       providers: [
         { provide: TranslationService, useValue: { translate: (key: string) => key } },
         { provide: UsersService, useValue: usersServiceSpy },
+        { provide: NotificationService, useValue: notificationSpy },
       ]
     })
     .compileComponents();
@@ -66,5 +70,15 @@ describe('UsersListComponent', () => {
     component.updateUser(2);
 
     expect(router.navigate).toHaveBeenCalledWith(['update-user', 2]);
+  });
+
+  it('signale une erreur si la liste des utilisateurs ne peut pas être chargée', () => {
+    usersServiceSpy.getUsersList.and.returnValue(throwError(() => new Error('403')));
+
+    const autre = TestBed.createComponent(UsersListComponent);
+    autre.detectChanges();
+
+    expect(notificationSpy.showError).toHaveBeenCalledWith('Erreur de chargement des utilisateurs');
+    expect(autre.componentInstance.users).toEqual([]);
   });
 });

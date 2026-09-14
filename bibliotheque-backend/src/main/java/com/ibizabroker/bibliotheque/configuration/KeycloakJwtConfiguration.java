@@ -51,7 +51,20 @@ public class KeycloakJwtConfiguration {
     public JwtDecoder jwtDecoder() {
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwksUri).build();
 
-        OAuth2TokenValidator<Jwt> issuerValidator = token -> {
+        // Validations par défaut (dates iat/exp) + acceptation des deux issuer.
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                new JwtTimestampValidator(), issuerValidator()));
+        return decoder;
+    }
+
+    /**
+     * N'accepte que les jetons émis par le realm Keycloak de l'application,
+     * vu du navigateur (issuer local) ou du réseau Docker (issuer interne).
+     * Méthode dédiée (et non lambda inline) pour être testée sans serveur
+     * Keycloak ni clés JWKS.
+     */
+    OAuth2TokenValidator<Jwt> issuerValidator() {
+        return token -> {
             // getIssuer() renvoie un URL selon la version de Spring Security :
             // on lit le claim brut « iss » pour comparer en tant que String.
             String issuer = token.getClaimAsString("iss");
@@ -61,11 +74,6 @@ public class KeycloakJwtConfiguration {
             return OAuth2TokenValidatorResult.failure(
                     new OAuth2Error("invalid_iss", "Issuer inconnu : " + issuer, null));
         };
-
-        // Validations par défaut (dates iat/exp) + acceptation des deux issuer.
-        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
-                new JwtTimestampValidator(), issuerValidator));
-        return decoder;
     }
 
     /**

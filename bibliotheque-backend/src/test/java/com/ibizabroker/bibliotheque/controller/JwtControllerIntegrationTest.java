@@ -16,22 +16,33 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Instant;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Tests d'intégration de l'endpoint legacy /authenticate (JwtController).
- * Le JwtService est simulé pour isoler le controller.
+ * Tests d'intégration de JwtController : endpoint legacy /authenticate et
+ * profil de l'utilisateur connecté /profile.
+ * Le JwtService, le décodeur JWT et les repositories sont simulés.
  */
 @SpringBootTest(properties = {
         "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,"
@@ -43,6 +54,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 @AutoConfigureMockMvc
 class JwtControllerIntegrationTest {
+
+    private static final String TOKEN_ADHERENT = "token-adherent";
+    private static final String TOKEN_INCONNU = "token-inconnu";
 
     @Autowired
     private MockMvc mockMvc;
@@ -72,10 +86,13 @@ class JwtControllerIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        Role role = new Role();
-        role.setRoleName("ADHERENT");
+        Role roleAdherent = new Role();
+        roleAdherent.setRoleName("ADHERENT");
+        Role roleUser = new Role();
+        roleUser.setRoleName("User");
         Set<Role> roles = new HashSet<>();
-        roles.add(role);
+        roles.add(roleAdherent);
+        roles.add(roleUser);
 
         utilisateur = new Users();
         utilisateur.setUserId(1);
@@ -83,6 +100,16 @@ class JwtControllerIntegrationTest {
         utilisateur.setName("Adherent Un");
         utilisateur.setPassword("hash");
         utilisateur.setRole(roles);
+
+        when(usersRepository.findByUsername("A1")).thenReturn(Optional.of(utilisateur));
+
+        when(jwtDecoder.decode(any(String.class))).thenAnswer(invocation -> {
+            String token = invocation.getArgument(0);
+            if (TOKEN_INCONNU.equals(token)) {
+                return jwt("ghost", Collections.singletonList("User"), token);
+            }
+            return jwt("A1", Arrays.asList("User", "ADHERENT"), token);
+        });
     }
 
     @Test
@@ -119,5 +146,57 @@ class JwtControllerIntegrationTest {
             org.assertj.core.api.Assertions.assertThat(e.getCause())
                     .hasMessageContaining("INVALID_CREDENTIALS");
         }
+    }
+
+    @Test
+    void sansToken_profile_renvoie401() throws Exception {
+        mockMvc.perform(get("/profile"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void avecToken_profile_renvoieLesInformationsPersonnelles() throws Exception {
+        mockMvc.perform(get("/profile")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN_ADHERENT))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(1))
+                .andExpect(jsonPath("$.username").value("A1"))
+                .andExpect(jsonPath("$.name").value("Adherent Un"))
+                .andExpect(jsonPath("$.email").value("A1@bibliotheque.local"))
+                .andExpect(jsonPath("$.roles[0]").value("ADHERENT"))
+                .andExpect(jsonPath("$.roles[1]").value("User"))
+                .andExpect(jsonPath("$.password").doesNotExist());
+    }
+
+    @Test
+    void avecTokenDUnUtilisateurAbsentDuReferentiel_profile_renvoie404() throws Exception {
+        when(usersRepository.findByUsername("ghost")).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/profile")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN_INCONNU))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void profile_ignoreLeParametreUsername_lIdentiteVientDuToken() throws Exception {
+        mockMvc.perform(get("/profile")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN_ADHERENT)
+                        .param("username", "admin"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value("A1"));
+    }
+
+    // ------------------------------------------------------------------
+
+    private Jwt jwt(String username, List<String> roles, String token) {
+        Map<String, Object> realmAccess = new HashMap<>();
+        realmAccess.put("roles", roles);
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("sub", username);
+        claims.put("preferred_username", username);
+        claims.put("email", username + "@bibliotheque.local");
+        claims.put("realm_access", realmAccess);
+        return new Jwt(token, Instant.now(), Instant.now().plusSeconds(300),
+                Collections.singletonMap("alg", "none"), claims);
     }
 }

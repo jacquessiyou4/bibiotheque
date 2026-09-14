@@ -5,6 +5,7 @@ import com.ibizabroker.bibliotheque.dto.UserCreateRequest;
 import com.ibizabroker.bibliotheque.dto.UserResponse;
 import com.ibizabroker.bibliotheque.entity.Role;
 import com.ibizabroker.bibliotheque.entity.Users;
+import com.ibizabroker.bibliotheque.exceptions.ConflictException;
 import com.ibizabroker.bibliotheque.exceptions.NotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -42,6 +43,11 @@ public class AdminController {
     @PreAuthorize("hasRole('Admin')")
     public Users addUserByAdmin(@Valid @RequestBody UserCreateRequest request) {
         log.info("Requête POST /admin/users — création de l'utilisateur '{}'", request.getUsername());
+        // Le username identifie le compte Keycloak (/me, réservations) : un
+        // doublon ferait échouer findByUsername pour les deux comptes.
+        if (usersRepository.findByUsername(request.getUsername()).isPresent()) {
+            throw new ConflictException("Le nom d'utilisateur « " + request.getUsername() + " » est déjà utilisé.");
+        }
         Users user = new Users();
         user.setUsername(request.getUsername());
         user.setName(request.getName());
@@ -89,6 +95,12 @@ public class AdminController {
         log.info("Requête PUT /admin/users/{}", id);
         Users user = usersRepository.findById(id)
             .orElseThrow(() -> new NotFoundException("User with id " + id + " does not exist."));
+        boolean usernamePrisParUnAutre = usersRepository.findByUsername(userDetails.getUsername())
+            .filter(autre -> !autre.getUserId().equals(id))
+            .isPresent();
+        if (usernamePrisParUnAutre) {
+            throw new ConflictException("Le nom d'utilisateur « " + userDetails.getUsername() + " » est déjà utilisé.");
+        }
 
         user.setName(userDetails.getName());
         user.setUsername(userDetails.getUsername());

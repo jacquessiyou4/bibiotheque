@@ -127,10 +127,11 @@ class JwtServiceTest {
     void loadUserByUsername_leveUneExceptionPourUnUtilisateurInconnu() {
         when(usersRepository.findByUsername("inconnu")).thenReturn(Optional.empty());
 
-        // L'implémentation actuelle fait Optional.get() sans garde : c'est la
-        // NoSuchElementException de l'Optional vide qui remonte.
+        // Contrat UserDetailsService : UsernameNotFoundException (et non la
+        // NoSuchElementException d'un Optional.get() sans garde).
         assertThatThrownBy(() -> jwtService.loadUserByUsername("inconnu"))
-                .isInstanceOf(java.util.NoSuchElementException.class);
+                .isInstanceOf(org.springframework.security.core.userdetails.UsernameNotFoundException.class)
+                .hasMessageContaining("inconnu");
     }
 
     // ------------------------------------------------------------------

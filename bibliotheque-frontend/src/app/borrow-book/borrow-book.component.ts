@@ -48,10 +48,16 @@ export class BorrowBookComponent implements OnInit, OnDestroy {
 
   borrowBook(bookId: number) {
     this.borrow.bookId = bookId;
-    this.borrow.userId = this.userId;
+    if (this.userId !== null) {
+      this.borrow.userId = this.userId;
+    }
     this.borrowService.borrowBook(this.borrow).pipe(takeUntil(this.destroy$)).subscribe({
-      next: () => this.notificationService.showSuccess('Emprunt réussi'),
-      error: () => this.notificationService.showError('Erreur lors de l\'emprunt')
+      next: () => {
+        this.notificationService.showSuccess('Emprunt réussi');
+        // Le nombre d'exemplaires affiché a changé.
+        this.getBooks();
+      },
+      error: (err) => this.notificationService.showError(err?.error?.message || 'Erreur lors de l\'emprunt')
     });
   }
 }

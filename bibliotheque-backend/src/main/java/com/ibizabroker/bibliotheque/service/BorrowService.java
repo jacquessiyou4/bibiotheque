@@ -7,6 +7,7 @@ import com.ibizabroker.bibliotheque.entity.Books;
 import com.ibizabroker.bibliotheque.entity.Borrow;
 import com.ibizabroker.bibliotheque.entity.Users;
 import com.ibizabroker.bibliotheque.exceptions.BadRequestException;
+import com.ibizabroker.bibliotheque.exceptions.ForbiddenException;
 import com.ibizabroker.bibliotheque.exceptions.NotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -64,8 +65,25 @@ public class BorrowService {
 
     @Transactional
     public Borrow returnBook(Borrow borrow) {
+        return returnBook(borrow, null);
+    }
+
+    /**
+     * Retour d'un emprunt. Si proprietaireAttendu est renseigné (utilisateur
+     * non bibliothécaire), l'emprunt doit lui appartenir, sinon 403.
+     */
+    @Transactional
+    public Borrow returnBook(Borrow borrow, Integer proprietaireAttendu) {
         Borrow borrowBook = borrowRepository.findById(borrow.getBorrowId())
                 .orElseThrow(() -> new NotFoundException("Emprunt introuvable"));
+        if (proprietaireAttendu != null && !proprietaireAttendu.equals(borrowBook.getUserId())) {
+            throw new ForbiddenException("Accès refusé : cet emprunt ne vous appartient pas.");
+        }
+        // Sans ce contrôle, rendre deux fois le même emprunt ajoutait une
+        // copie fantôme au stock.
+        if (borrowBook.getReturnDate() != null) {
+            throw new BadRequestException("Cet emprunt a déjà été rendu.");
+        }
         Books book = booksRepository.findById(borrowBook.getBookId())
                 .orElseThrow(() -> new NotFoundException("Livre introuvable"));
 
@@ -77,6 +95,17 @@ public class BorrowService {
 
         log.info("Retour: emprunt {} rendu pour \"{}\"", borrowBook.getBorrowId(), book.getBookName());
         return borrowRepository.save(borrowBook);
+    }
+
+    /**
+     * Identifiant de l'utilisateur local correspondant au compte Keycloak
+     * authentifié (preferred_username).
+     */
+    public Integer resolveUserId(String username) {
+        return usersRepository.findByUsername(username)
+                .map(Users::getUserId)
+                .orElseThrow(() -> new ForbiddenException(
+                        "Aucun compte local pour le compte Keycloak « " + username + " »."));
     }
 
     public List<Borrow> findByUserId(Integer userId) {

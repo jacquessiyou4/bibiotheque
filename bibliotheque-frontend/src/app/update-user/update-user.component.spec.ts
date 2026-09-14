@@ -39,7 +39,8 @@ describe('UpdateUserComponent', () => {
     })
     .compileComponents();
 
-    usersServiceSpy.getUserById.and.returnValue(of(mockUser));
+    // Copie à chaque appel : onSubmit modifie user.role, et l'ordre des tests est aléatoire.
+    usersServiceSpy.getUserById.and.callFake(() => of({ ...mockUser, role: [...mockUser.role] }));
     usersServiceSpy.updateUser.and.returnValue(of({}));
 
     fixture = TestBed.createComponent(UpdateUserComponent);
@@ -59,13 +60,14 @@ describe('UpdateUserComponent', () => {
   });
 
   it('ngOnInit définit selectedRole depuis le premier rôle de l\u2019utilisateur', () => {
-    usersServiceSpy.getUserById.and.returnValue(of(mockUser));
+    // Copie à chaque appel : onSubmit modifie user.role, et l'ordre des tests est aléatoire.
+    usersServiceSpy.getUserById.and.callFake(() => of({ ...mockUser, role: [...mockUser.role] }));
     component.ngOnInit();
     expect(component.selectedRole).toBe('ADHERENT');
   });
 
   it('ngOnInit garde selectedRole par défaut si pas de rôle', () => {
-    usersServiceSpy.getUserById.and.returnValue(of({ userId: 2, username: 'no-role', name: 'No Role', password: '', role: null }));
+    usersServiceSpy.getUserById.and.returnValue(of({ userId: 2, username: 'no-role', name: 'No Role', password: '', role: null } as unknown as Users));
     component.ngOnInit();
     expect(component.selectedRole).toBe('User');
   });

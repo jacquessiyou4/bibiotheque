@@ -32,8 +32,9 @@ describe('UserAuthService', () => {
     service.setRoles([{ roleName: 'ADHERENT' }]);
 
     const roles = service.getRoles();
-    expect(roles.length).toBe(1);
-    expect(roles[0].roleName).toBe('ADHERENT');
+    expect(roles).not.toBeNull();
+    expect(roles!.length).toBe(1);
+    expect(roles![0].roleName).toBe('ADHERENT');
     expect(JSON.parse(localStorage.getItem('roles') || '[]')).toEqual([{ roleName: 'ADHERENT' }]);
   });
 
@@ -52,7 +53,7 @@ describe('UserAuthService', () => {
   it('clear() efface token, rôles, nom et userId', () => {
     service.setToken('jeton');
     service.setRoles([{ roleName: 'ADHERENT' }]);
-        service.setName(1);
+    service.setName('Nom');
     service.setUserId(1);
 
     service.clear();

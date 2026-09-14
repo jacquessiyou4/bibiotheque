@@ -13,24 +13,30 @@ export class AuthInterceptor implements HttpInterceptor {
   ) {}
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
+    const noAuth = req.headers.get('No-Auth') === 'True';
     let headers: Record<string, string> = {};
 
-    if (req.headers.get('No-Auth') !== 'True') {
+    if (!noAuth) {
       const token = this.userAuthService.getToken();
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
+      // Ajouter un X-Request-ID unique pour corréler les logs frontend → backend
+      // (pas sur les appels No-Auth vers Keycloak, qui ne l'autorise pas en CORS).
+      headers['X-Request-ID'] = this.generateRequestId();
     }
 
-    // Ajouter un X-Request-ID unique pour corréler les logs frontend → backend
-    headers['X-Request-ID'] = this.generateRequestId();
-
-    const cloned = req.clone({ setHeaders: headers });
+    // No-Auth n'est qu'un marqueur interne : il ne doit pas partir sur le
+    // réseau, un en-tête inconnu fait échouer la pré-requête CORS.
+    const base = noAuth ? req.clone({ headers: req.headers.delete('No-Auth') }) : req;
+    const cloned = base.clone({ setHeaders: headers });
 
     return next.handle(cloned).pipe(
         catchError(
             (err:HttpErrorResponse) => {
                 if(err.status === 401) {
+                    // Jeton expiré ou refusé : la session locale n'est plus valable.
+                    this.userAuthService.clear();
                     this.router.navigate(['/login']);
                 } else if(err.status === 403) {
                     this.router.navigate(['/forbidden']);

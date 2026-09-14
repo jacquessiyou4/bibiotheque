@@ -14,13 +14,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -35,11 +40,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Tests d'intégration des emprunts (endpoints /borrow). Les endpoints sont
- * accessibles sans authentification (permitAll), les données viennent de
- * repositories simulés. On vérifie les règles de gestion : décrément du
- * stock à l'emprunt, refus hors stock, dates issueDate/dueDate (+ 7 jours),
- * ré-incrément du stock et returnDate au retour, sérialisation dd-MM-yyyy.
+ * Tests d'intégration des emprunts (endpoints /borrow). Les endpoints exigent
+ * un jeton (décodage JWT simulé), les données viennent de repositories
+ * simulés. On vérifie les règles de gestion : décrément du stock à
+ * l'emprunt, refus hors stock, dates issueDate/dueDate (+ 7 jours),
+ * ré-incrément du stock et returnDate au retour, refus d'un double retour,
+ * sérialisation dd-MM-yyyy.
  */
 @SpringBootTest(properties = {
         "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,"
@@ -51,6 +57,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 @AutoConfigureMockMvc
 class BorrowApiIntegrationTest {
+
+    private static final String BEARER_ADHERENT = "Bearer token-adherent";
+    private static final String BEARER_ADMIN = "Bearer token-admin";
 
     @Autowired
     private MockMvc mockMvc;
@@ -89,8 +98,32 @@ class BorrowApiIntegrationTest {
 
         when(booksRepository.findById(3)).thenReturn(Optional.of(livre));
         when(usersRepository.findById(1)).thenReturn(Optional.of(adherent));
+        when(usersRepository.findByUsername("A1")).thenReturn(Optional.of(adherent));
         when(booksRepository.save(any(Books.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(borrowRepository.save(any(Borrow.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        when(jwtDecoder.decode(any(String.class))).thenAnswer(invocation -> {
+            boolean admin = BEARER_ADMIN.equals("Bearer " + invocation.getArgument(0));
+            String username = admin ? "admin" : "A1";
+            Map<String, Object> realmAccess = new HashMap<>();
+            realmAccess.put("roles", admin ? Arrays.asList("Admin", "BIBLIOTHECAIRE") : Arrays.asList("User", "ADHERENT"));
+            Map<String, Object> claims = new HashMap<>();
+            claims.put("sub", username);
+            claims.put("preferred_username", username);
+            claims.put("realm_access", realmAccess);
+            return new Jwt(invocation.getArgument(0), Instant.now(), Instant.now().plusSeconds(300),
+                    Collections.singletonMap("alg", "none"), claims);
+        });
+    }
+
+    @Test
+    void sansToken_postBorrow_renvoie401() throws Exception {
+        mockMvc.perform(post("/borrow")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":1,\"bookId\":3}"))
+                .andExpect(status().isUnauthorized());
+
+        verify(borrowRepository, never()).save(any(Borrow.class));
     }
 
     // ------------------------------------------------------------------
@@ -99,11 +132,12 @@ class BorrowApiIntegrationTest {
     @Test
     void postBorrow_decrementeLeStockEtPositionneLesDates() throws Exception {
         mockMvc.perform(post("/borrow")
+                        .header(HttpHeaders.AUTHORIZATION, BEARER_ADHERENT)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"borrowId\":10,\"userId\":1,\"bookId\":3}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").value(
-                        org.hamcrest.Matchers.containsString("Adherent Un has borrowed one copy of \"L2\"!")));
+                        org.hamcrest.Matchers.containsString("Adherent Un a emprunté une copie de \"L2\" !")));
 
         ArgumentCaptor<Books> livresCapturés = ArgumentCaptor.forClass(Books.class);
         verify(booksRepository).save(livresCapturés.capture());
@@ -118,15 +152,16 @@ class BorrowApiIntegrationTest {
     }
 
     @Test
-    void postBorrow_stockEpuise_renvoieLeMessageHorsStockEtNeSauvegardeRien() throws Exception {
+    void postBorrow_stockEpuise_renvoie400EtNeSauvegardeRien() throws Exception {
         livre.setNoOfCopies(0);
 
         mockMvc.perform(post("/borrow")
+                        .header(HttpHeaders.AUTHORIZATION, BEARER_ADHERENT)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"borrowId\":10,\"userId\":1,\"bookId\":3}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").value(
-                        org.hamcrest.Matchers.containsString("The book \"L2\" is out of stock!")));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(
+                        org.hamcrest.Matchers.containsString("n'est plus disponible")));
 
         verify(booksRepository, never()).save(any(Books.class));
         verify(borrowRepository, never()).save(any(Borrow.class));
@@ -146,8 +181,9 @@ class BorrowApiIntegrationTest {
         when(borrowRepository.findById(1)).thenReturn(Optional.of(emprunt));
 
         mockMvc.perform(put("/borrow")
+                        .header(HttpHeaders.AUTHORIZATION, BEARER_ADHERENT)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"borrowId\":1}"))
+                        .content("{\"borrowId\":1,\"userId\":1,\"bookId\":3}"))
                 .andExpect(status().isOk())
                 // Le retour est sérialisé au format dd-MM-yyyy (JsonDataSerializer).
                 .andExpect(jsonPath("$.returnDate").value(
@@ -162,23 +198,93 @@ class BorrowApiIntegrationTest {
         assertThat(empruntsCapturés.getValue().getReturnDate()).isNotNull();
     }
 
+    @Test
+    void putBorrow_empruntDejaRendu_renvoie400EtNeModifiePasLeStock() throws Exception {
+        Borrow emprunt = new Borrow();
+        emprunt.setBorrowId(1);
+        emprunt.setUserId(1);
+        emprunt.setBookId(3);
+        emprunt.setIssueDate(new Date());
+        emprunt.setReturnDate(new Date());
+
+        when(borrowRepository.findById(1)).thenReturn(Optional.of(emprunt));
+
+        mockMvc.perform(put("/borrow")
+                        .header(HttpHeaders.AUTHORIZATION, BEARER_ADHERENT)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"borrowId\":1,\"userId\":1,\"bookId\":3}"))
+                .andExpect(status().isBadRequest());
+
+        verify(booksRepository, never()).save(any(Books.class));
+        verify(borrowRepository, never()).save(any(Borrow.class));
+    }
+
     // ------------------------------------------------------------------
     // Consultations
     // ------------------------------------------------------------------
     @Test
-    void getBorrows_renvoieTousLesEmprunts() throws Exception {
+    void getBorrows_admin_renvoieTousLesEmprunts() throws Exception {
         when(borrowRepository.findAll()).thenReturn(Collections.singletonList(emprunt(1)));
 
-        mockMvc.perform(get("/borrow"))
+        mockMvc.perform(get("/borrow").header(HttpHeaders.AUTHORIZATION, BEARER_ADMIN))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)));
+    }
+
+    // ------------------------------------------------------------------
+    // Propriété : un adhérent n'agit que sur ses propres emprunts (403)
+    // ------------------------------------------------------------------
+    @Test
+    void getBorrows_adherent_renvoie403() throws Exception {
+        mockMvc.perform(get("/borrow").header(HttpHeaders.AUTHORIZATION, BEARER_ADHERENT))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void postBorrow_adherentPourUnAutreUtilisateur_renvoie403EtNeSauvegardeRien() throws Exception {
+        mockMvc.perform(post("/borrow")
+                        .header(HttpHeaders.AUTHORIZATION, BEARER_ADHERENT)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":2,\"bookId\":3}"))
+                .andExpect(status().isForbidden());
+
+        verify(booksRepository, never()).save(any(Books.class));
+        verify(borrowRepository, never()).save(any(Borrow.class));
+    }
+
+    @Test
+    void putBorrow_adherentSurLEmpruntDUnAutre_renvoie403EtNeModifiePasLeStock() throws Exception {
+        Borrow empruntDAutrui = emprunt(5);
+        empruntDAutrui.setUserId(2);
+        when(borrowRepository.findById(5)).thenReturn(Optional.of(empruntDAutrui));
+
+        mockMvc.perform(put("/borrow")
+                        .header(HttpHeaders.AUTHORIZATION, BEARER_ADHERENT)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"borrowId\":5,\"userId\":1,\"bookId\":3}"))
+                .andExpect(status().isForbidden());
+
+        verify(booksRepository, never()).save(any(Books.class));
+        verify(borrowRepository, never()).save(any(Borrow.class));
+    }
+
+    @Test
+    void getBorrowsByUser_adherentSurUnAutreUtilisateur_renvoie403() throws Exception {
+        mockMvc.perform(get("/borrow/user/2").header(HttpHeaders.AUTHORIZATION, BEARER_ADHERENT))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getBorrowsByBook_adherent_renvoie403() throws Exception {
+        mockMvc.perform(get("/borrow/book/3").header(HttpHeaders.AUTHORIZATION, BEARER_ADHERENT))
+                .andExpect(status().isForbidden());
     }
 
     @Test
     void getBorrowsByUser_renvoieLesEmpruntsDeLUtilisateur() throws Exception {
         when(borrowRepository.findByUserId(1)).thenReturn(Arrays.asList(emprunt(1), emprunt(2)));
 
-        mockMvc.perform(get("/borrow/user/1"))
+        mockMvc.perform(get("/borrow/user/1").header(HttpHeaders.AUTHORIZATION, BEARER_ADHERENT))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(2)));
     }
@@ -187,7 +293,7 @@ class BorrowApiIntegrationTest {
     void getBorrowsByBook_renvoieLesEmpruntsDuLivre() throws Exception {
         when(borrowRepository.findByBookId(3)).thenReturn(Collections.singletonList(emprunt(1)));
 
-        mockMvc.perform(get("/borrow/book/3"))
+        mockMvc.perform(get("/borrow/book/3").header(HttpHeaders.AUTHORIZATION, BEARER_ADMIN))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)));
     }

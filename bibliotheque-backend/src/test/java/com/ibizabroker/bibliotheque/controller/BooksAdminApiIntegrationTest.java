@@ -11,6 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -89,7 +91,8 @@ class BooksAdminApiIntegrationTest {
         livre.setNoOfCopies(2);
 
         when(booksRepository.findById(101)).thenReturn(Optional.of(livre));
-        when(booksRepository.findAll()).thenReturn(Collections.singletonList(livre));
+        when(booksRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(Collections.singletonList(livre)));
         when(booksRepository.save(any(Books.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         when(jwtDecoder.decode(any(String.class))).thenAnswer(invocation -> {
@@ -110,6 +113,13 @@ class BooksAdminApiIntegrationTest {
     @Test
     void sansToken_getBooks_renvoie401() throws Exception {
         mockMvc.perform(get("/admin/books"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void sansToken_getBooksAvecSlashFinal_renvoie401() throws Exception {
+        // "/admin/books/" était ouvert (permitAll) dans la configuration de sécurité.
+        mockMvc.perform(get("/admin/books/"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -139,12 +149,12 @@ class BooksAdminApiIntegrationTest {
     // Un ADHERENT : la liste est consultable, le CRUD est interdit (403)
     // ------------------------------------------------------------------
     @Test
-    void avecTokenAdherent_getBooks_renvoie200EtLaListe() throws Exception {
+    void avecTokenAdherent_getBooks_renvoie200EtLaPage() throws Exception {
         mockMvc.perform(get("/admin/books")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN_ADHERENT))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].bookName").value("L1"));
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].bookName").value("L1"));
     }
 
     @Test
@@ -154,12 +164,14 @@ class BooksAdminApiIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+    // Corps VALIDES : @Valid est évalué avant @PreAuthorize, un corps
+    // incomplet renverrait 400 et ne testerait pas le contrôle de rôle.
     @Test
     void avecTokenAdherent_postBook_renvoie403() throws Exception {
         mockMvc.perform(post("/admin/books")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN_ADHERENT)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"bookName\":\"Nouveau\",\"noOfCopies\":1}"))
+                        .content("{\"bookName\":\"Nouveau\",\"bookAuthor\":\"Auteur\",\"noOfCopies\":1}"))
                 .andExpect(status().isForbidden());
     }
 
@@ -168,7 +180,7 @@ class BooksAdminApiIntegrationTest {
         mockMvc.perform(put("/admin/books/101")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN_ADHERENT)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"bookName\":\"Modifié\"}"))
+                        .content("{\"bookName\":\"Modifié\",\"bookAuthor\":\"Auteur\",\"noOfCopies\":1}"))
                 .andExpect(status().isForbidden());
     }
 
@@ -200,6 +212,25 @@ class BooksAdminApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.bookName").value("Nouveau Livre"))
                 .andExpect(jsonPath("$.noOfCopies").value(3));
+    }
+
+    @Test
+    void avecTokenAdmin_postBookSansAuteur_renvoie400() throws Exception {
+        mockMvc.perform(post("/admin/books")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN_ADMIN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"bookName\":\"Nouveau Livre\",\"noOfCopies\":3}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.bookAuthor").exists());
+    }
+
+    @Test
+    void avecTokenAdmin_postBookJsonInvalide_renvoie400() throws Exception {
+        mockMvc.perform(post("/admin/books")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN_ADMIN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{pas du json"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

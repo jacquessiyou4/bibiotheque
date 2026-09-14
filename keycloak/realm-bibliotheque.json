@@ -9,6 +9,7 @@
   "resetPasswordAllowed": true,
   "editUsernameAllowed": false,
   "sslRequired": "external",
+  "accessTokenLifespan": 1800,
   "roles": {
     "realm": [
       {

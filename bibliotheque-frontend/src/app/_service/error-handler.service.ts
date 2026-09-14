@@ -10,6 +10,8 @@ export class AppErrorHandler implements ErrorHandler {
   constructor(private injector: Injector) {}
 
   handleError(error: any): void {
+    // Garder la trace en console : sans cela un bug de code est invisible.
+    console.error(error);
     const notification = this.injector.get(NotificationService);
     const status = error?.status;
 

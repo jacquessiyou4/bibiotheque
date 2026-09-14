@@ -33,6 +33,12 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-validation</artifactId>
 		</dependency>
+		<!-- Actuator : /actuator/health, utilisé par le healthcheck docker-compose
+		     (les propriétés management.* étaient configurées sans la dépendance). -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
 
 		<!-- Sécurité OIDC : le backend valide les jetons d'accès Keycloak
 		     (resource server OAuth2, "spring-boot-starter-oauth2-resource-server",

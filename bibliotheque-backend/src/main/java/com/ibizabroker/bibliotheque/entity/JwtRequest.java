@@ -9,12 +9,22 @@ public class JwtRequest {
         return username;
     }
 
+    // Setters standards : Jackson lie les champs JSON « username » /
+    // « password » via setUsername / setPassword.
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
     public void setUserName(String userName) {
         this.username = userName;
     }
 
     public String getPassword() {
         return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 
     public void setUserPassword(String userPassword) {

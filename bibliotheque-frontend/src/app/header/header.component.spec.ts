@@ -35,7 +35,7 @@ describe('HeaderComponent', () => {
     .compileComponents();
 
     localStorage.clear();
-    localStorage.setItem('name', '42');
+    localStorage.setItem('name', JSON.stringify('Jean'));
     fixture = TestBed.createComponent(HeaderComponent);
     component = fixture.componentInstance;
     userAuthService = TestBed.inject(UserAuthService);
@@ -84,6 +84,6 @@ describe('HeaderComponent', () => {
   });
 
   it('name reflète le nom stocké dans le UserAuthService', () => {
-    expect(component.name).toBe(42);
+    expect(component.name).toBe('Jean');
   });
 });

@@ -31,6 +31,9 @@ class JwtUtilTest {
     @BeforeEach
     void setUp() {
         jwtUtil = new JwtUtil();
+        // JwtUtil lit la clé via @Value("${jwt.secret}") : hors contexte Spring,
+        // il faut l'injecter à la main (plus de valeur codée en dur).
+        org.springframework.test.util.ReflectionTestUtils.setField(jwtUtil, "SECRET_KEY", SECRET_KEY);
         utilisateur = new User("A1", "mot-de-passe", Collections.emptyList());
     }
 

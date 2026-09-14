@@ -1,7 +1,9 @@
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { Books } from '../_model/books';
+import { LIST_PAGE_SIZE, Page } from '../_model/page';
 import { apiUrl } from './api-config';
 
 @Injectable({
@@ -13,8 +15,12 @@ export class BooksService {
 
   constructor(private httpClient: HttpClient) { }
 
+  // GET /admin/books est paginé côté backend (Page<BookResponse>) : on
+  // demande une page couvrant tout le catalogue et on n'expose que son
+  // contenu, comme attendu par les composants.
   getBooksList(): Observable<Books[]> {
-    return this.httpClient.get<Books[]>(`${this.baseURL}`);
+    return this.httpClient.get<Page<Books>>(this.baseURL, { params: { size: LIST_PAGE_SIZE } })
+      .pipe(map(page => page.content));
   }
 
   createBook(book: Books): Observable<Object> {

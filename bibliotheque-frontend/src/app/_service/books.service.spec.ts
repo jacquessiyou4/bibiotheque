@@ -35,7 +35,9 @@ describe('BooksService', () => {
       expect(livres[0].bookName).toBe('L1');
     });
 
-    httpMock.expectOne('http://localhost:8080/admin/books').flush([unLivre()]);
+    // Le backend renvoie une Page Spring Data : le service n'en garde que content.
+    httpMock.expectOne('http://localhost:8080/admin/books?size=1000')
+      .flush({ content: [unLivre()], totalElements: 1, totalPages: 1, number: 0, size: 1000 });
   });
 
   it('getBookById appelle GET /admin/books/{id}', () => {

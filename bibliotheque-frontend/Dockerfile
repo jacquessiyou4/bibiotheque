@@ -25,6 +25,6 @@ COPY docker-entrypoint.d/40-env-config.sh /docker-entrypoint.d/40-env-config.sh
 RUN chmod +x /docker-entrypoint.d/40-env-config.sh
 
 HEALTHCHECK --interval=10s --timeout=5s --retries=5 \
-  CMD wget -q --spider http://localhost:80 || exit 1
+  CMD wget -q --spider http://127.0.0.1:80 || exit 1
 
 EXPOSE 80

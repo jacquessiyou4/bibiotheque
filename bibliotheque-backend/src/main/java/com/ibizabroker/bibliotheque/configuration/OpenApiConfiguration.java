@@ -2,6 +2,7 @@ package com.ibizabroker.bibliotheque.configuration;
 
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.springframework.context.annotation.Bean;
@@ -15,6 +16,9 @@ public class OpenApiConfiguration {
     @Bean
     public OpenAPI bibliothequeOpenApi() {
         return new OpenAPI()
+                .info(new Info()
+                        .title("bibliothèque")
+                        .description("API de gestion de bibliothèque"))
                 .components(new Components().addSecuritySchemes(BEARER_AUTH,
                         new SecurityScheme()
                                 .name(BEARER_AUTH)

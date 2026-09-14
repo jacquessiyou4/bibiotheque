@@ -41,7 +41,7 @@ export class LoginComponent implements OnInit, OnDestroy {
   login(loginForm: NgForm) {
     this.userService.login(loginForm).pipe(
       takeUntil(this.destroy$),
-      switchMap((response: { access_token: string }) => {
+      switchMap((response: any) => {
         const accessToken = response.access_token;
         const payload = this.userAuthSerivce.decodeJwt(accessToken);
         const roles: string[] = (payload.realm_access && payload.realm_access.roles) || [];
@@ -51,7 +51,7 @@ export class LoginComponent implements OnInit, OnDestroy {
         this.userAuthSerivce.setName(payload.name || payload.preferred_username);
 
         return this.userService.getMe().pipe(
-          switchMap((me: { userId: number; name: string }) => {
+          switchMap((me: any) => {
             this.userAuthSerivce.setUserId(me.userId);
             this.userAuthSerivce.setName(me.name);
             this.navigateAfterLogin(roles);
@@ -60,7 +60,14 @@ export class LoginComponent implements OnInit, OnDestroy {
         );
       })
     ).subscribe({
-      error: () => this.notificationService.showError('Identifiants incorrects')
+      error: (err) => {
+        // Le jeton et les rôles sont stockés avant l'appel à /me : en cas
+        // d'échec, ne pas laisser une session à moitié ouverte.
+        this.userAuthSerivce.clear();
+        this.notificationService.showError(err?.status === 401
+          ? 'Identifiants incorrects'
+          : 'Connexion impossible : compte inconnu de l\'application ou serveur injoignable');
+      }
     });
   }
 

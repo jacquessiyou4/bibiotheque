@@ -114,6 +114,20 @@ class BorrowServiceTest {
     }
 
     @Test
+    void returnBook_empruntDejaRendu_lanceBadRequestSansToucherAuStock() {
+        Borrow emprunt = unEmprunt();
+        emprunt.setReturnDate(new java.util.Date());
+        when(borrowRepository.findById(1)).thenReturn(Optional.of(emprunt));
+
+        assertThatThrownBy(() -> borrowService.returnBook(emprunt))
+                .isInstanceOf(com.ibizabroker.bibliotheque.exceptions.BadRequestException.class)
+                .hasMessageContaining("déjà été rendu");
+        // Le contrôle a lieu avant tout accès au livre : stock inchangé.
+        verify(booksRepository, org.mockito.Mockito.never()).findById(any());
+        verify(booksRepository, org.mockito.Mockito.never()).save(any(Books.class));
+    }
+
+    @Test
     void returnBook_empruntIntrouvable_lanceNotFound() {
         when(borrowRepository.findById(999)).thenReturn(Optional.empty());
 

@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, 'feat/**']
+    branches: [main, 'feat/**', 'feature/**']
   pull_request:
     branches: [main]
 
@@ -53,8 +53,8 @@ jobs:
       - name: Install dependencies
         run: cd bibliotheque-frontend && npm ci
 
-      - name: Lint
-        run: cd bibliotheque-frontend && npx ng lint
+      # Pas d'étape « ng lint » : aucun builder lint n'est configuré dans
+      # angular.json (@angular-eslint absent), la commande échouerait toujours.
 
       - name: Unit tests with coverage
         run: cd bibliotheque-frontend && npx ng test --no-watch --browsers=ChromeHeadlessCodeCoverage

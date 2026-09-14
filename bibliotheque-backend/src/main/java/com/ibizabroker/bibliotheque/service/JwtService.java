@@ -5,6 +5,7 @@ import com.ibizabroker.bibliotheque.entity.JwtRequest;
 import com.ibizabroker.bibliotheque.entity.JwtResponse;
 import com.ibizabroker.bibliotheque.entity.Users;
 import com.ibizabroker.bibliotheque.util.JwtUtil;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
@@ -25,7 +26,10 @@ public class JwtService implements UserDetailsService {
     private final UsersRepository userDao;
     private final AuthenticationManager authenticationManager;
 
-    public JwtService(JwtUtil jwtUtil, UsersRepository userDao, AuthenticationManager authenticationManager) {
+    // @Lazy : WebSecurityConfiguration injecte ce service (UserDetailsService)
+    // et fournit l'AuthenticationManager ; sans proxy paresseux, la référence
+    // circulaire empêche le démarrage de l'application (BeanCurrentlyInCreationException).
+    public JwtService(JwtUtil jwtUtil, UsersRepository userDao, @Lazy AuthenticationManager authenticationManager) {
         this.jwtUtil = jwtUtil;
         this.userDao = userDao;
         this.authenticationManager = authenticationManager;
@@ -45,17 +49,16 @@ public class JwtService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        Users user = userDao.findByUsername(username).get();
+        // Optional.get() levait NoSuchElementException (500) au lieu du
+        // UsernameNotFoundException attendu par Spring Security.
+        Users user = userDao.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
 
-        if (user != null) {
-            return new org.springframework.security.core.userdetails.User(
-                    user.getUsername(),
-                    user.getPassword(),
-                    getAuthority(user)
-            );
-        } else {
-            throw new UsernameNotFoundException("User not found with username: " + username);
-        }
+        return new org.springframework.security.core.userdetails.User(
+                user.getUsername(),
+                user.getPassword(),
+                getAuthority(user)
+        );
     }
 
     private Set<SimpleGrantedAuthority> getAuthority(Users user) {

@@ -2,9 +2,25 @@ import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { NgForm } from '@angular/forms';
 import { Observable } from 'rxjs';
-import { CreateUserRequest, Users } from '../_model/users';
+import { map } from 'rxjs/operators';
+import { CreateUserRequest, UserListItem, Users } from '../_model/users';
+import { LIST_PAGE_SIZE, Page } from '../_model/page';
 import { UserAuthService } from './user-auth.service';
 import { apiUrl, keycloakClient, keycloakRealm, keycloakUrl } from './api-config';
+
+/**
+ * Le backend renvoie des UserResponse (rôles = liste de noms) ; les
+ * composants manipulent le modèle Users (rôles = [{ roleName }]).
+ */
+function toUsers(user: UserListItem): Users {
+  return {
+    userId: user.userId,
+    username: user.username,
+    name: user.name,
+    password: '',
+    role: (user.roles || []).map(roleName => ({ roleName }))
+  };
+}
 
 @Injectable({
   providedIn: 'root'
@@ -69,8 +85,10 @@ export class UsersService {
     return false;
   }
 
+  // GET /admin/users est paginé côté backend (Page<UserResponse>).
   getUsersList(): Observable<Users[]> {
-    return this.httpClient.get<Users[]>(`${this.baseURL}`);
+    return this.httpClient.get<Page<UserListItem>>(this.baseURL, { params: { size: LIST_PAGE_SIZE } })
+      .pipe(map(page => page.content.map(toUsers)));
   }
 
   createUser(user: CreateUserRequest | Users): Observable<Object> {
@@ -78,11 +96,21 @@ export class UsersService {
   }
 
   getUserById(userId: number): Observable<Users> {
-    return this.httpClient.get<Users>(`${this.baseURL}/${userId}`);
+    return this.httpClient.get<UserListItem>(`${this.baseURL}/${userId}`).pipe(map(toUsers));
   }
 
   updateUser(userId: number, user: Users): Observable<Object> {
-    return this.httpClient.put(`${this.baseURL}/${userId}`, user);
+    // Le backend attend un UserCreateRequest : rôles en liste de noms, et
+    // mot de passe absent (pas vide, sinon @Size le rejette) pour le conserver.
+    const body: Partial<CreateUserRequest> = {
+      username: user.username,
+      name: user.name,
+      roles: (user.role || []).map(r => r.roleName)
+    };
+    if (user.password) {
+      body.password = user.password;
+    }
+    return this.httpClient.put(`${this.baseURL}/${userId}`, body);
   }
 
 }

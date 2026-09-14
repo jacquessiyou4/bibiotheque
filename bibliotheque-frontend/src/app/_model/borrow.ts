@@ -1,8 +1,10 @@
+// Les dates arrivent du backend sous forme de chaînes dd-MM-yyyy
+// (JsonDataSerializer).
 export class Borrow {
     borrowId: number;
     bookId: number;
     userId: number;
-    issueDate: Date;
-    returnDate: Date | null;
-    dueDate: Date;
+    issueDate: Date | string;
+    returnDate: Date | string | null;
+    dueDate: Date | string;
 }

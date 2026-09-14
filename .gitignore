@@ -1,5 +1,6 @@
 # Réglages locaux des outils
 .claude/
+.idea/
 
 # Identifiants locaux (voir .env.example)
 .env

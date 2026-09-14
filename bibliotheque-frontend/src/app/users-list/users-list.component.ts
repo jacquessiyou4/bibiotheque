@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -20,7 +20,8 @@ export class UsersListComponent implements OnInit, OnDestroy {
   constructor(
     private usersService: UsersService,
     private router: Router,
-    private notificationService: NotificationService
+    private notificationService: NotificationService,
+    private cdr: ChangeDetectorRef
   ) { }
 
   ngOnInit(): void {
@@ -34,7 +35,11 @@ export class UsersListComponent implements OnInit, OnDestroy {
 
   private getUsers() {
     this.usersService.getUsersList().pipe(takeUntil(this.destroy$)).subscribe({
-      next: (data) => this.users = data,
+      next: (data) => {
+        this.users = data;
+        // OnPush : une réponse HTTP ne marque pas la vue comme modifiée.
+        this.cdr.markForCheck();
+      },
       error: () => this.notificationService.showError('Erreur de chargement des utilisateurs')
     });
   }

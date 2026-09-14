@@ -40,7 +40,7 @@ public class SecurityAuditFilter implements Filter {
 
         // Extraire ou générer un request ID unique
         String requestId = httpRequest.getHeader(REQUEST_ID_HEADER);
-        if (requestId == null || requestId.isBlank()) {
+        if (requestId == null || requestId.trim().isEmpty()) {
             requestId = UUID.randomUUID().toString();
         }
         MDC.put(MDC_REQUEST_ID, requestId);

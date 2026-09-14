@@ -12,12 +12,8 @@
             <!-- <td> {{ getUserData(borrower.userId) }} </td> -->
             <td> {{ borrower.userId }} </td>
             <td> {{ borrower.issueDate }} </td>
-            <div *ngIf="borrower.returnDate != null">
-                <td> {{ borrower.returnDate }} </td>
-            </div>
-            <div *ngIf="borrower.returnDate === null">
-                <td> {{ 'history.notReturned' | translate }} </td>
-            </div>
+            <td *ngIf="borrower.returnDate != null"> {{ borrower.returnDate }} </td>
+            <td *ngIf="borrower.returnDate == null"> {{ 'history.notReturned' | translate }} </td>
         </tr>
     </tbody>
 </table>

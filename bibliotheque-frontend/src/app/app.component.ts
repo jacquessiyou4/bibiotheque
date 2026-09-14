@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { ThemeService } from './_service/theme.service';
+import { NotificationService } from './_service/notification.service';
 
 @Component({
   selector: 'app-root',
@@ -9,7 +10,8 @@ import { ThemeService } from './_service/theme.service';
 export class AppComponent {
   title = 'Library Management System';
 
-  constructor(private themeService: ThemeService) {
+  constructor(private themeService: ThemeService,
+              public notificationService: NotificationService) {
     this.themeService.init();
   }
 }

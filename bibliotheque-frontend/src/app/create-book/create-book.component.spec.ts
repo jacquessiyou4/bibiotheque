@@ -56,6 +56,9 @@ describe('CreateBookComponent', () => {
     component.book.bookAuthor = 'Auteur';
     component.book.bookGenre = 'Roman';
     component.book.noOfCopies = 1;
+    // saveBook navigue vers /books en cas de succès : sans stub, la navigation
+    // échoue (aucune route de test) et fait échouer Karma en afterAll.
+    spyOn(router, 'navigate');
 
     component.saveBook();
 

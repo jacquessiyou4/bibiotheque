@@ -12,16 +12,18 @@ import { TranslationService } from '../_service/translation.service';
 })
 export class HeaderComponent implements OnInit {
 
-  name: string | null;
-
   constructor(
     private userAuthService: UserAuthService,
     private router: Router,
     public userService: UsersService,
     public themeService: ThemeService,
     public translationService: TranslationService,
-  ) {
-    this.name = this.userAuthService.getName();
+  ) { }
+
+  // Le header n'est jamais recréé : lire le nom à chaque rendu, sinon il
+  // reste celui d'avant la connexion (null) jusqu'au rechargement de la page.
+  get name(): string | null {
+    return this.userAuthService.getName();
   }
 
   toggleTheme() {

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { forkJoin } from 'rxjs';
@@ -43,7 +43,8 @@ export class BorrowListComponent implements OnInit, OnDestroy {
     private borrowService: BorrowService,
     private booksService: BooksService,
     private usersService: UsersService,
-    private notificationService: NotificationService
+    private notificationService: NotificationService,
+    private cdr: ChangeDetectorRef
   ) { }
 
   ngOnInit(): void {
@@ -70,6 +71,8 @@ export class BorrowListComponent implements OnInit, OnDestroy {
     }).pipe(takeUntil(this.destroy$)).subscribe({
       next: ({ books, users, borrows }) => {
         this.allRows = this.buildRows(books || [], users || [], borrows || []);
+        // OnPush : une réponse HTTP ne marque pas la vue comme modifiée.
+        this.cdr.markForCheck();
       },
       error: () => this.notificationService.showError('Erreur de chargement des emprunts')
     });
@@ -85,9 +88,9 @@ export class BorrowListComponent implements OnInit, OnDestroy {
       bookName: bookName(b.bookId),
       userId: b.userId,
       borrowerName: borrowerName(b.userId),
-      issueDate: b.issueDate ? new Date(b.issueDate).toLocaleDateString() : null,
-      dueDate: b.dueDate ? new Date(b.dueDate).toLocaleDateString() : null,
-      returnDate: b.returnDate ? new Date(b.returnDate).toLocaleDateString() : null,
+      issueDate: this.formatDate(b.issueDate),
+      dueDate: this.formatDate(b.dueDate),
+      returnDate: this.formatDate(b.returnDate),
       statut: b.returnDate ? 'Rendu' : 'Emprunté'
     }));
 
@@ -112,5 +115,14 @@ export class BorrowListComponent implements OnInit, OnDestroy {
       }));
 
     return [...borrowRows, ...availableRows];
+  }
+
+  // Le backend sérialise déjà les dates en dd-MM-yyyy (JsonDataSerializer),
+  // format que new Date() ne sait pas relire : on l'affiche tel quel.
+  private formatDate(value: Date | string | null | undefined): string | null {
+    if (!value) {
+      return null;
+    }
+    return typeof value === 'string' ? value : value.toLocaleDateString();
   }
 }

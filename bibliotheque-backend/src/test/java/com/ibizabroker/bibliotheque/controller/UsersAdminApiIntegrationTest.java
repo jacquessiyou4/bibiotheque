@@ -8,10 +8,13 @@ import com.ibizabroker.bibliotheque.entity.Role;
 import com.ibizabroker.bibliotheque.entity.Users;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -29,9 +32,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -88,7 +92,8 @@ class UsersAdminApiIntegrationTest {
         adherent = utilisateur(1, "A1", "Adherent");
         bibliothecaire = utilisateur(2, "admin", "Admin");
 
-        when(usersRepository.findAll()).thenReturn(Arrays.asList(adherent, bibliothecaire));
+        when(usersRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(Arrays.asList(adherent, bibliothecaire)));
         when(usersRepository.findById(1)).thenReturn(Optional.of(adherent));
         when(usersRepository.save(any(Users.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -140,20 +145,35 @@ class UsersAdminApiIntegrationTest {
         mockMvc.perform(put("/admin/users/1")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN_ADHERENT)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"X\"}"))
+                        // Corps valide : @Valid passe avant @PreAuthorize (sinon 400).
+                        .content("{\"username\":\"X\",\"name\":\"X\"}"))
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void avecTokenAdherent_postUser_renvoie403EtNeSauvegardeRien() throws Exception {
+        mockMvc.perform(post("/admin/users")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN_ADHERENT)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"nouveau\",\"name\":\"Nouveau\","
+                                + "\"password\":\"mot-de-passe-clair\",\"roles\":[]}"))
+                .andExpect(status().isForbidden());
+
+        verify(usersRepository, never()).save(any(Users.class));
+    }
+
     // ------------------------------------------------------------------
-    // L'Admin liste et consulte
+    // L'Admin liste et consulte (réponse paginée, DTO UserResponse)
     // ------------------------------------------------------------------
     @Test
-    void avecTokenAdmin_getUsers_renvoieTousLesUtilisateurs() throws Exception {
+    void avecTokenAdmin_getUsers_renvoieLaPageDesUtilisateurs() throws Exception {
         mockMvc.perform(get("/admin/users")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN_ADMIN))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(2)))
-                .andExpect(jsonPath("$[0].username").value("A1"));
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.content[0].username").value("A1"))
+                .andExpect(jsonPath("$.content[0].roles[0]").value("Adherent"))
+                .andExpect(jsonPath("$.content[0].password").doesNotExist());
     }
 
     @Test
@@ -176,36 +196,35 @@ class UsersAdminApiIntegrationTest {
     // Création : le mot de passe est encodé (jamais stocké/renvoyé en clair)
     // ------------------------------------------------------------------
     @Test
-    void postUser_encodeLeMotDePasseAvantSauvegarde() throws Exception {
+    void avecTokenAdmin_postUser_encodeLeMotDePasseAvantSauvegarde() throws Exception {
         mockMvc.perform(post("/admin/users")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN_ADHERENT)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN_ADMIN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"username\":\"nouveau\",\"name\":\"Nouveau\","
-                                + "\"password\":\"mot-de-passe-clair\",\"role\":[]}"))
+                                + "\"password\":\"mot-de-passe-clair\",\"roles\":[]}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value("nouveau"))
-                // Le mot de passe renvoyé n'est plus le mot de passe clair : il
-                // a été remplacé par son hash BCrypt (préfixe $2).
-                .andExpect(jsonPath("$.password").value(startsWith("$2")))
-                .andExpect(jsonPath("$.password").value(
-                        org.hamcrest.Matchers.not("mot-de-passe-clair")));
+                // @JsonIgnore : le hash n'est jamais renvoyé au client.
+                .andExpect(jsonPath("$.password").doesNotExist());
 
-        verify(usersRepository).save(any(Users.class));
+        ArgumentCaptor<Users> sauvegarde = ArgumentCaptor.forClass(Users.class);
+        verify(usersRepository).save(sauvegarde.capture());
+        String hash = sauvegarde.getValue().getPassword();
+        assertThat(hash).startsWith("$2").isNotEqualTo("mot-de-passe-clair");
+        assertThat(passwordEncoder.matches("mot-de-passe-clair", hash)).isTrue();
     }
 
     @Test
     void avecTokenAdmin_putUser_metAjourNomUsernameEtRole() throws Exception {
-        String role = "{\"roleName\":\"Admin\"}";
-
         mockMvc.perform(put("/admin/users/1")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN_ADMIN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"username\":\"A1-modifié\",\"name\":\"Nom Modifié\","
-                                + "\"role\":[" + role + "]}"))
+                                + "\"roles\":[\"Admin\"]}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Nom Modifié"))
                 .andExpect(jsonPath("$.username").value("A1-modifié"))
-                .andExpect(jsonPath("$.role[0].roleName").value("Admin"));
+                .andExpect(jsonPath("$.roles[0]").value("Admin"));
     }
 
     // ------------------------------------------------------------------

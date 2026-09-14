@@ -66,6 +66,8 @@ describe('BooksListComponent', () => {
   });
 
   it('deleteBook supprime puis recharge la liste', () => {
+    // Sans ce stub, le vrai window.confirm bloque Chrome headless (déconnexion Karma).
+    spyOn(window, 'confirm').and.returnValue(true);
     booksServiceSpy.deleteBook.and.returnValue(of({ deleted: true }));
 
     component.deleteBook(1);

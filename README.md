@@ -21,6 +21,10 @@ Application full-stack de gestion de bibliothèque : **Spring Boot** (API REST) 
 
 ---
 
+> **Exploitation** (démarrage, sauvegardes, restauration, pannes courantes) : voir
+> [docs/RUNBOOK.md](docs/RUNBOOK.md). Le frontend est servi par nginx sur le port
+> 4200 ; le backend (port 8080) n'expose plus que l'API et Swagger.
+
 ## Sommaire
 
 1. [Prérequis](#1-prérequis)
@@ -85,70 +89,54 @@ c'est d'abord savoir diagnostiquer pourquoi il refuse de démarrer.
 
 ```
 bibliothèque/
-├── bibliotheque-backend/           API REST Spring Boot — port 8080
-│   ├── pom.xml                     dépendances Maven + version de Java
-│   ├── mvnw, mvnw.cmd              wrapper Maven (pas besoin d'installer Maven)
-│   └── src/
-│       ├── main/java/com/ibizabroker/bibliotheque/
-│       │   ├── BibliothequeApplication.java   point d'entrée (main)
-│       │   ├── entity/             les objets métier == les tables
-│       │   │   ├── Books.java          un livre (+ borrowBook / returnBook)
-│       │   │   ├── Users.java          un utilisateur, lié à des Role
-│       │   │   ├── Role.java           "Admin" ou "User"
-│       │   │   ├── Borrow.java         un emprunt (dates emprunt / retour)
-│       │   │   ├── JwtRequest.java     corps du POST /authenticate
-│       │   │   ├── JwtResponse.java    réponse : utilisateur + token
-│       │   │   └── JsonDataSerializer.java  formate les dates en dd-MM-yyyy
-│       │   ├── dao/                accès base — Spring Data JPA
-│       │   │   ├── BooksRepository.java
-│       │   │   ├── UsersRepository.java     findByUsername
-│       │   │   └── BorrowRepository.java    findByUserId, findByBookId
-│       │   ├── controller/         les points d'entrée HTTP
-│       │   │   ├── BooksController.java     /admin/books
-│       │   │   ├── AdminController.java     /admin/users
-│       │   │   ├── BorrowController.java    /borrow
-│       │   │   └── JwtController.java       /authenticate
-│       │   ├── service/
-│       │   │   └── JwtService.java     vérifie le couple login / mot de passe
-│       │   ├── configuration/
-│       │   │   ├── WebSecurityConfiguration.java     qui a le droit d'aller où
-│       │   │   ├── JwtRequestFilter.java             lit le header Authorization
-│       │   │   ├── JwtAuthenticationEntryPoint.java  renvoie 401
-│       │   │   └── CorsConfiguration.java            autorise le front
-│       │   ├── util/JwtUtil.java       fabrique et valide les tokens
-│       │   └── exceptions/NotFoundException.java     -> HTTP 404
-│       ├── main/resources/application.properties     port, URL base, identifiants
-│       └── test/java/...           un seul test : le contexte démarre-t-il ?
+├── bibliotheque-backend/            API REST Spring Boot — port 8080, préfixe /api/v1
+│   ├── pom.xml
+│   └── src/main/java/com/ibizabroker/bibliotheque/
+│       ├── BibliothequeApplication.java
+│       ├── catalogue/               livres
+│       │   ├── api/                 CatalogueApi, LivreResume : ce qu'utilisent les autres fonctionnalités
+│       │   ├── web/                 BooksController, BookRequest, BookResponse
+│       │   └── internal/            BooksService, BooksRepository, Books (entité)
+│       ├── emprunts/                prêts et retours (api/ web/ internal/)
+│       ├── reservations/            réservations des livres indisponibles (api/ web/ internal/)
+│       ├── utilisateurs/            comptes, profil, lien avec Keycloak (api/ web/ internal/)
+│       ├── auth/                    POST /api/v1/auth/token (web/ internal/)
+│       ├── donnees/                 export et anonymisation RGPD (web/ internal/)
+│       └── shared/                  commun à toutes les fonctionnalités
+│           ├── config/              sécurité, CORS, OpenAPI, versionnement de l'API
+│           ├── web/                 erreurs problem+json, filtres (requestId, anciens chemins, limite de connexion)
+│           ├── error/               exceptions métier avec leur code
+│           └── util/                formes canoniques des saisies
+│   └── src/main/resources/
+│       ├── application.properties, application-prod.properties
+│       └── db/migration/            V1 … V5 (Flyway)
 │
-├── bibliotheque-frontend/          interface Angular — port 4200
-│   ├── package.json                dépendances npm + scripts
-│   ├── angular.json                configuration de build
-│   └── src/
-│       ├── index.html              la seule vraie page HTML
-│       ├── main.ts                 démarre AppModule
-│       └── app/
-│           ├── app.module.ts       déclare composants, services, intercepteur
-│           ├── app-routing.module.ts   URL -> composant, + rôles autorisés
-│           ├── _model/             les types TypeScript (books, users, borrow)
-│           ├── _service/           les appels HTTP vers le backend
-│           │   ├── books.service.ts      CRUD livres
-│           │   ├── users.service.ts      CRUD utilisateurs + login
-│           │   ├── borrow.service.ts     emprunts
-│           │   └── user-auth.service.ts  token + rôles dans localStorage
-│           ├── _auth/
-│           │   ├── auth.guard.ts         bloque une route selon le rôle
-│           │   └── auth.interceptor.ts   ajoute "Bearer <token>" partout
-│           └── <15 composants>/    un dossier par écran (html / css / ts / spec)
+├── bibliotheque-frontend/           interface Angular — port 4200 (nginx)
+│   └── src/app/
+│       ├── app.module.ts            coquille : en-tête, accueil, accès refusé
+│       ├── app-routing.module.ts    fonctionnalités chargées à la demande
+│       ├── core/
+│       │   ├── api/                 appels HTTP (livres, emprunts, réservations, utilisateurs)
+│       │   ├── auth/                garde de route, intercepteur (jeton, erreurs)
+│       │   ├── services/            session, notifications, traduction, thème, erreurs
+│       │   ├── i18n/                traductions fr / en
+│       │   ├── layout/              header, home, forbidden
+│       │   └── routing/             matcher des modules chargés à la demande
+│       ├── shared/                  SharedModule, pipe translate, modèles
+│       └── features/                catalogue, emprunts, reservations, utilisateurs, auth
 │
-├── screenshots/                    captures utilisées plus bas
-├── SEANCE-1.md                     déroulé de la séance
-└── EPREUVE-SEANCE-1.md             l'épreuve à rendre
+├── keycloak/realm-bibliotheque.json realm importé au premier démarrage
+├── ops/                             sauvegardes (backup/), Prometheus et Grafana (observability/)
+├── docs/                            RUNBOOK, ADR, contrat OpenAPI, données personnelles
+├── docker-compose.yml               pile complète ; profils https, ops, observability
+└── docker-compose.secrets.yml       variante avec mots de passe en fichiers
 ```
 
-**La règle à retenir** : côté backend, un dossier = une responsabilité
-(`controller` reçoit, `service` décide, `dao` persiste, `entity` représente).
-Côté frontend, un dossier = un écran, et tout ce qui parle au réseau vit dans
-`_service`.
+**La règle à retenir** : côté backend, un package = une fonctionnalité métier,
+et une fonctionnalité n'utilise les autres que par leur package `api`
+(vérifié par `ArchitectureTest`). Côté frontend, une fonctionnalité n'importe
+jamais une autre ; ce qu'elles partagent vit dans `core` ou `shared` (vérifié par
+`npm run arch`).
 
 ---
 
@@ -253,13 +241,13 @@ Connexion : **admin / admin123**.
 Vérification en ligne de commande, sans passer par le navigateur :
 
 ```bash
-curl -X POST http://localhost:8080/authenticate \
+curl -X POST http://localhost:8080/auth/token \
      -H "Content-Type: application/json" \
      -d '{"username":"admin","password":"admin123"}'
 ```
 
-Vous devez recevoir un JSON contenant `jwtToken`. Gardez-le : il sert pour tous
-les autres appels.
+Vous devez recevoir un JSON contenant `accessToken`. Gardez-le : il sert pour
+tous les autres appels.
 
 ```bash
 curl http://localhost:8080/admin/users -H "Authorization: Bearer <le_token>"
@@ -281,7 +269,7 @@ tableau passivement.
 | 4 | Navigateur | [`auth.interceptor.ts`](bibliotheque-frontend/src/app/_auth/auth.interceptor.ts) | **Toute** requête sortante passe ici : il ajoute l'en-tête `Authorization: Bearer <token>`. C'est lui aussi qui redirige vers `/login` sur un 401 et vers `/forbidden` sur un 403. |
 | 5 | Réseau | — | La requête quitte le navigateur. Ouvrez l'onglet *Réseau* des DevTools : vous devez voir le POST, son corps et son en-tête. |
 | 6 | Backend | [`CorsConfiguration.java`](bibliotheque-backend/src/main/java/com/ibizabroker/bibliotheque/configuration/CorsConfiguration.java) | Le port 4200 n'est pas le port 8080 : sans cette autorisation CORS, le navigateur refuserait la réponse. |
-| 7 | Backend | [`JwtRequestFilter.java`](bibliotheque-backend/src/main/java/com/ibizabroker/bibliotheque/configuration/JwtRequestFilter.java) | Extrait le token du header, en tire le `username`, recharge l'utilisateur et le pose dans le `SecurityContext`. Filtre exécuté **avant** tout contrôleur. |
+| 7 | Backend | [`KeycloakJwtConfiguration.java`](bibliotheque-backend/src/main/java/com/ibizabroker/bibliotheque/configuration/KeycloakJwtConfiguration.java) | Le resource server OAuth2 vérifie la signature et l'issuer du jeton Keycloak, puis traduit ses rôles en autorités Spring posées dans le `SecurityContext`. Exécuté **avant** tout contrôleur. |
 | 8 | Backend | [`WebSecurityConfiguration.java`](bibliotheque-backend/src/main/java/com/ibizabroker/bibliotheque/configuration/WebSecurityConfiguration.java) | Décide si la requête a le droit de continuer. Sans authentification valide → 401 émis par `JwtAuthenticationEntryPoint`. |
 | 9 | Backend | [`BooksController.java`](bibliotheque-backend/src/main/java/com/ibizabroker/bibliotheque/controller/BooksController.java) | `@PostMapping("/books")` reçoit le JSON, `@RequestBody` le transforme en objet `Books`. `@PreAuthorize("hasRole('Admin')")` refuse si le rôle ne colle pas → 403. |
 | 10 | Backend | [`BooksRepository.java`](bibliotheque-backend/src/main/java/com/ibizabroker/bibliotheque/dao/BooksRepository.java) | `save(book)`. L'interface est vide : Spring Data en génère l'implémentation au démarrage. |
@@ -300,25 +288,49 @@ le contrôleur y modifie **deux** tables.
 
 ## 7. Les API
 
-Base : `http://localhost:8080`
+Base : `http://localhost:8080/api/v1` — contrat complet dans Swagger
+(`http://localhost:8080/swagger-ui.html`) et dans [docs/api/openapi.json](docs/api/openapi.json).
+
+> **Anciens chemins** (`/admin/books`, `/borrow`, `/api/reservations`, `/auth/token`,
+> `/profile`…) : toujours servis, mais obsolètes. Leurs réponses portent les
+> en-têtes `Deprecation: true`, `Sunset` (suppression prévue le 15 mars 2027) et
+> `Link` vers le chemin `/api/v1` équivalent.
+
+**Erreurs** : toutes au format `application/problem+json` :
+
+```json
+{ "type": "https://bibliotheque.local/problemes/book-unavailable", "title": "Bad Request",
+  "status": 400, "code": "BOOK_UNAVAILABLE", "detail": "Le livre \"L2\" n'est plus disponible.",
+  "requestId": "3f2a9c1e-…" }
+```
+
+Le `code` est stable (à utiliser dans un client) ; le `requestId` permet de
+retrouver la requête dans les logs (voir [docs/RUNBOOK.md](docs/RUNBOOK.md)).
 
 ### Authentification
 
-`POST /authenticate` — accessible sans token, renvoie l'utilisateur et son JWT.
+`POST /api/v1/auth/token` — accessible sans token, renvoie les jetons Keycloak
+(`accessToken`, `refreshToken`, durées de validité). Au-delà de 10 tentatives par
+minute depuis une même adresse : `429`.
 
 ```json
 { "username": "admin", "password": "admin123" }
 ```
 
-### Livres — `/admin/books`
+`GET /api/v1/profile` — profil de l'utilisateur du jeton (id, username, nom, email, rôles).
+
+`GET /api/v1/profile/export` — toutes les données personnelles de l'utilisateur
+(profil, emprunts, réservations), en fichier JSON.
+
+### Livres — `/api/v1/books`
 
 | Verbe | URL | Rôle | Description |
 |---|---|---|---|
-| GET | `/admin/books` | — | Liste tous les livres |
-| GET | `/admin/books/{id}` | Admin | Un livre par son id |
-| POST | `/admin/books` | Admin | Crée un livre |
-| PUT | `/admin/books/{id}` | Admin | Modifie un livre |
-| DELETE | `/admin/books/{id}` | Admin | Supprime un livre |
+| GET | `/api/v1/books` | authentifié | Liste paginée des livres |
+| GET | `/api/v1/books/{id}` | Admin | Un livre par son id |
+| POST | `/api/v1/books` | Admin | Crée un livre |
+| PUT | `/api/v1/books/{id}` | Admin | Modifie un livre |
+| DELETE | `/api/v1/books/{id}` | Admin | Supprime un livre (refusé en `409` s'il est encore emprunté) |
 
 ```json
 {
@@ -329,37 +341,51 @@ Base : `http://localhost:8080`
 }
 ```
 
-### Utilisateurs — `/admin/users`
+### Utilisateurs — `/api/v1/users`
 
 | Verbe | URL | Rôle | Description |
 |---|---|---|---|
-| GET | `/admin/users` | Admin | Liste les utilisateurs |
-| GET | `/admin/users/{id}` | Admin | Un utilisateur par son id |
-| POST | `/admin/users` | authentifié | Crée un utilisateur (le mot de passe est chiffré ici) |
-| PUT | `/admin/users/{id}` | Admin | Modifie un utilisateur |
+| GET | `/api/v1/users` | Admin | Liste paginée des utilisateurs |
+| GET | `/api/v1/users/{id}` | Admin | Un utilisateur par son id |
+| POST | `/api/v1/users` | Admin | Crée un utilisateur (username enregistré en minuscules) |
+| PUT | `/api/v1/users/{id}` | Admin | Modifie un utilisateur |
+| POST | `/api/v1/users/{id}/anonymisation` | Admin | Anonymise le compte (droit à l'effacement, irréversible) |
 
 ```json
 {
     "username": "marie",
     "name": "Marie Dupont",
     "password": "motdepasse",
-    "role": [ { "roleName": "User" } ]
+    "roles": [ "User", "ADHERENT" ]
 }
 ```
 
-### Emprunts — `/borrow`
+### Emprunts — `/api/v1/loans`
 
 | Verbe | URL | Description |
 |---|---|---|
-| GET | `/borrow` | Tous les emprunts |
-| GET | `/borrow/user/{id}` | Les emprunts d'un utilisateur |
-| GET | `/borrow/book/{id}` | L'historique d'un livre |
-| POST | `/borrow` | Emprunter : décrémente `noOfCopies`, échéance à 7 jours |
-| PUT | `/borrow` | Rendre : incrémente `noOfCopies`, pose la date de retour |
+| GET | `/api/v1/loans` | Tous les emprunts (bibliothécaire) |
+| GET | `/api/v1/loans/user/{id}` | Les emprunts d'un utilisateur (un adhérent : les siens) |
+| GET | `/api/v1/loans/book/{id}` | L'historique d'un livre (bibliothécaire) |
+| POST | `/api/v1/loans` | Emprunter : retire un exemplaire, échéance à 7 jours (`201`) |
+| PUT | `/api/v1/loans` | Rendre : remet l'exemplaire en stock, pose la date de retour |
 
 ```json
 { "bookId": 3, "userId": 5 }
 ```
+
+Les dates sont au format ISO-8601 (`2026-09-15T10:15:30`).
+
+### Réservations — `/api/v1/reservations`
+
+| Verbe | URL | Description |
+|---|---|---|
+| GET | `/api/v1/reservations` | Liste (un adhérent : les siennes) |
+| GET | `/api/v1/reservations/{id}` | Une réservation |
+| POST | `/api/v1/reservations` | Réserver un livre indisponible |
+| PATCH | `/api/v1/reservations/{id}/annuler` | Annuler |
+| DELETE | `/api/v1/reservations/{id}` | Supprimer (bibliothécaire) |
+| GET | `/api/v1/reservations/expirees` | Réservations expirées (bibliothécaire) |
 
 ---
 

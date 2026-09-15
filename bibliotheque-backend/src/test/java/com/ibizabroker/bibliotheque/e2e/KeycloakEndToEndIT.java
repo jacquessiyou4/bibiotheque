@@ -76,8 +76,11 @@ class KeycloakEndToEndIT {
             .withCopyFileToContainer(MountableFile.forHostPath("../keycloak/realm-bibliotheque.json"),
                     "/opt/keycloak/data/import/realm-bibliotheque.json")
             .withCommand("start-dev", "--import-realm")
+            // 8 min : Keycloak « start-dev » reconstruit sa configuration au démarrage ;
+            // sur une machine chargée (autres conteneurs, build en parallèle) il a
+            // dépassé 4 min alors que l'import du realm lui-même réussit.
             .waitingFor(Wait.forHttp("/realms/bibliotheque").forPort(8080).forStatusCode(200)
-                    .withStartupTimeout(Duration.ofMinutes(4)));
+                    .withStartupTimeout(Duration.ofMinutes(8)));
 
     @DynamicPropertySource
     static void configurer(DynamicPropertyRegistry registry) {
@@ -90,7 +93,6 @@ class KeycloakEndToEndIT {
         registry.add("app.keycloak.issuer-internal", KeycloakEndToEndIT::realm);
         registry.add("app.keycloak.jwks-uri", () -> realm() + "/protocol/openid-connect/certs");
         registry.add("app.keycloak.token-uri", () -> realm() + "/protocol/openid-connect/token");
-        registry.add("jwt.secret", () -> "secret-des-tests-de-bout-en-bout-uniquement-0123456789");
     }
 
     private static String realm() {
@@ -194,9 +196,10 @@ class KeycloakEndToEndIT {
         Map<String, Object> emprunt = new HashMap<>();
         emprunt.put("bookId", 1);
         emprunt.put("userId", userId);
-        ResponseEntity<String> empruntReponse = api.exchange("/borrow", HttpMethod.POST,
-                new HttpEntity<>(emprunt, entetes(jeton)), String.class);
-        assertThat(empruntReponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        ResponseEntity<Map<String, Object>> empruntReponse = appel(HttpMethod.POST, "/borrow", jeton, emprunt);
+        assertThat(empruntReponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        // Dates ISO-8601 (2026-09-14T10:15:30...), relisibles par le navigateur.
+        assertThat((String) empruntReponse.getBody().get("dueDate")).matches("\\d{4}-\\d{2}-\\d{2}T.*");
 
         ResponseEntity<List<Map<String, Object>>> emprunts = api.exchange("/borrow/user/" + userId, HttpMethod.GET,
                 new HttpEntity<>(entetes(jeton)), JSON_LISTE);
@@ -207,12 +210,25 @@ class KeycloakEndToEndIT {
 
         Map<String, Object> retour = new HashMap<>();
         retour.put("borrowId", enCours.get("borrowId"));
-        retour.put("bookId", 1);
-        retour.put("userId", userId);
         ResponseEntity<Map<String, Object>> rendu = appel(HttpMethod.PUT, "/borrow", jeton, retour);
 
         assertThat(rendu.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(rendu.getBody().get("returnDate")).isNotNull();
+    }
+
+    @Test
+    void apiVersionnee_etAnciensChemins_serventLesMemesDonnees() {
+        String jeton = jetonKeycloak("A1", "A1123");
+
+        ResponseEntity<Map<String, Object>> versionne = appel(HttpMethod.GET, "/api/v1/profile", jeton, null);
+        ResponseEntity<Map<String, Object>> ancien = appel(HttpMethod.GET, "/profile", jeton, null);
+
+        assertThat(versionne.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(versionne.getHeaders().getFirst("Deprecation")).isNull();
+        assertThat(ancien.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(ancien.getBody()).isEqualTo(versionne.getBody());
+        assertThat(ancien.getHeaders().getFirst("Deprecation")).isEqualTo("true");
+        assertThat(ancien.getHeaders().getFirst("Link")).contains("/api/v1/profile");
     }
 
     // ------------------------------------------------------------------

@@ -1,0 +1,49 @@
+<h2>{{ 'borrow.title' | translate }}</h2>
+
+<div class="row g-2 align-items-end mb-3">
+  <div class="col-12 col-sm-6 col-md-4">
+    <label for="filtreStatut" class="form-label">{{ 'borrow.filterByStatus' | translate }}</label>
+    <select id="filtreStatut" class="form-select" [(ngModel)]="filtreStatut">
+      <option value="">{{ 'borrow.all' | translate }}</option>
+      <option *ngFor="let s of statuts" [value]="s">{{ ('borrow.statut.' + s) | translate }}</option>
+    </select>
+  </div>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-success table-striped">
+    <caption class="visually-hidden">{{ 'table.caption.borrows' | translate }}</caption>
+      <thead>
+          <tr>
+              <th scope="col"> {{ 'borrow.borrowId' | translate }} </th>
+              <th scope="col"> {{ 'borrow.book' | translate }} </th>
+              <th scope="col"> {{ 'borrow.borrower' | translate }} </th>
+              <th scope="col"> {{ 'borrow.issueDate' | translate }} </th>
+              <th scope="col"> {{ 'borrow.dueDate' | translate }} </th>
+              <th scope="col"> {{ 'borrow.status' | translate }} </th>
+          </tr>
+      </thead>
+      <tbody>
+          <tr *ngFor="let borrow of rows">
+              <td [attr.data-label]="'borrow.borrowId' | translate"> {{ borrow.borrowId ?? '—' }} </td>
+              <td [attr.data-label]="'borrow.book' | translate"> {{ borrow.bookName }} </td>
+              <td [attr.data-label]="'borrow.borrower' | translate"> {{ borrow.borrowerName }} </td>
+              <td [attr.data-label]="'borrow.issueDate' | translate"> {{ borrow.issueDate ? (borrow.issueDate | date:'dd/MM/yyyy') : '—' }} </td>
+              <td [attr.data-label]="'borrow.dueDate' | translate"> {{ borrow.dueDate ? (borrow.dueDate | date:'dd/MM/yyyy') : '—' }} </td>
+              <td [attr.data-label]="'borrow.status' | translate">
+                  <span class="badge"
+                        [ngClass]="{
+                          'bg-warning text-dark': borrow.statut === 'Emprunté',
+                          'bg-secondary': borrow.statut === 'Rendu',
+                          'bg-success': borrow.statut === 'Disponible'
+                        }">
+                      {{ ('borrow.statut.' + borrow.statut) | translate }}
+                  </span>
+              </td>
+          </tr>
+          <tr *ngIf="rows.length === 0">
+              <td colspan="6" class="text-center">{{ 'borrow.noRecords' | translate }}</td>
+          </tr>
+      </tbody>
+  </table>
+</div>

@@ -1,0 +1,19 @@
+<h2>{{ 'bookDetails.borrowHistoryOf' | translate }} {{ user.name }}</h2>
+<table class="table table-info table-striped">
+  <caption class="visually-hidden">{{ 'table.caption.history' | translate }}</caption>
+    <thead>
+        <tr>
+            <th scope="col"> {{ 'history.bookId' | translate }} </th>
+            <th scope="col"> {{ 'history.issueDate' | translate }} </th>
+            <th scope="col"> {{ 'history.returnDate' | translate }} </th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr *ngFor="let borrower of borrow">
+            <td> {{ borrower.bookId }} </td>
+            <td> {{ borrower.issueDate | date:'dd/MM/yyyy' }} </td>
+            <td *ngIf="borrower.returnDate"> {{ borrower.returnDate | date:'dd/MM/yyyy' }} </td>
+            <td *ngIf="!borrower.returnDate"> {{ 'history.notReturned' | translate }} </td>
+        </tr>
+    </tbody>
+</table>

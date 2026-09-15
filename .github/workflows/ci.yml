@@ -6,9 +6,42 @@ on:
   pull_request:
     branches: [main]
 
+# Un nouveau push annule le run encore en cours sur la même branche.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
+  # Détermine quelles parties du dépôt ont changé : un changement limité au
+  # frontend n'a pas besoin des 10 minutes du test E2E Keycloak.
+  changes:
+    name: Parties modifiées
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filtre.outputs.backend }}
+      frontend: ${{ steps.filtre.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filtre
+        with:
+          filters: |
+            backend:
+              - 'bibliotheque-backend/**'
+              - 'keycloak/**'
+              - 'docker-compose.yml'
+              - '.github/workflows/**'
+            frontend:
+              - 'bibliotheque-frontend/**'
+              - '.github/workflows/**'
+
   backend:
     name: Backend (Java 8 + Maven)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,8 +53,19 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
+      # Tests unitaires, d'intégration et d'architecture (ArchUnit), seuils JaCoCo.
       - name: Build & test with coverage
         run: cd bibliotheque-backend && mvn -B verify
+
+      # Contrat d'API : OpenApiContractTest écrit target/openapi.json. Une
+      # modification incompatible (champ ou endpoint retiré, type changé) par
+      # rapport à docs/api/openapi.json fait échouer le build ; une évolution
+      # compatible passe, il suffit alors de recopier le fichier généré.
+      - name: API contract (openapi-diff)
+        run: |
+          docker run --rm -v "$PWD:/specs" openapitools/openapi-diff:2.1.0-beta.11 \
+            /specs/docs/api/openapi.json /specs/bibliotheque-backend/target/openapi.json \
+            --fail-on-incompatible
 
       - name: Upload backend coverage
         if: always()
@@ -39,6 +83,8 @@ jobs:
 
   e2e:
     name: E2E (Keycloak + PostgreSQL réels)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -65,6 +111,8 @@ jobs:
 
   frontend:
     name: Frontend (Node 18 + Angular)
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -79,8 +127,21 @@ jobs:
       - name: Install dependencies
         run: cd bibliotheque-frontend && npm ci
 
-      # Pas d'étape « ng lint » : aucun builder lint n'est configuré dans
-      # angular.json (@angular-eslint absent), la commande échouerait toujours.
+      # Vulnérabilités des dépendances livrées au navigateur. Seuil « critical »
+      # tant que le projet est sur Angular 14 : les alertes « high » restantes ne
+      # se corrigent qu'en montant de version majeure (BEST_PRACTICES.md, n° 2).
+      # Passer à --audit-level=high après cette montée.
+      - name: Dependency audit
+        run: cd bibliotheque-frontend && npm audit --omit=dev --audit-level=critical
+
+      # Règles d'architecture (.dependency-cruiser.js) : pas de cycle, les
+      # services ne dépendent pas des composants.
+      - name: Architecture rules
+        run: cd bibliotheque-frontend && npm run arch
+
+      # ESLint + règles Angular (angular-eslint), sur le TypeScript et les templates.
+      - name: Lint
+        run: cd bibliotheque-frontend && npx ng lint
 
       # --code-coverage : sans instrumentation, les seuils de karma.conf.js
       # (coverageReporter.check) n'auraient aucune mesure à vérifier.
@@ -96,3 +157,35 @@ jobs:
 
       - name: Build
         run: cd bibliotheque-frontend && npx ng build --configuration production
+
+  images:
+    name: Images Docker (build + scan)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build -t bibliotheque-backend:ci bibliotheque-backend
+
+      - name: Build frontend image
+        run: docker build -t bibliotheque-frontend:ci bibliotheque-frontend
+
+      # Échec sur une vulnérabilité CRITIQUE ayant un correctif disponible ; le
+      # rapport complet (HIGH compris) reste lisible dans les logs du job.
+      - name: Scan backend image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: bibliotheque-backend:ci
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+      - name: Scan frontend image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: bibliotheque-frontend:ci
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'

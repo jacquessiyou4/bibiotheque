@@ -1,78 +1,39 @@
 import { ErrorHandler, NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
-import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http'
+import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
-import { BooksListComponent } from './books-list/books-list.component';
-import { CreateBookComponent } from './create-book/create-book.component';
-import { FormsModule } from '@angular/forms';
-import { UpdateBookComponent } from './update-book/update-book.component';
-import { BookDetailsComponent } from './book-details/book-details.component';
-import { RegistrationComponent } from './registration/registration.component';
-import { UsersListComponent } from './users-list/users-list.component';
-import { UserDetailsComponent } from './user-details/user-details.component';
-import { UpdateUserComponent } from './update-user/update-user.component';
-import { LoginComponent } from './login/login.component';
-import { LogoutComponent } from './logout/logout.component';
-import { HeaderComponent } from './header/header.component';
-import { HomeComponent } from './home/home.component';
-import { BooksService } from './_service/books.service';
-import { UsersService } from './_service/users.service';
-import { RouterModule } from '@angular/router';
-import { AuthGuard } from './_auth/auth.guard';
-import { AuthInterceptor } from './_auth/auth.interceptor';
-import { ForbiddenComponent } from './forbidden/forbidden.component';
-import { BorrowBookComponent } from './borrow-book/borrow-book.component';
-import { ReturnBookComponent } from './return-book/return-book.component';
-import { ReservationsComponent } from './reservations/reservations.component';
-import { ReservationListComponent } from './reservations/reservation-list/reservation-list.component';
-import { ReservationFormComponent } from './reservations/reservation-form/reservation-form.component';
-import { BorrowListComponent } from './borrow-list/borrow-list.component';
-import { TranslatePipe } from './_i18n/translate.pipe';
-import { AppErrorHandler } from './_service/error-handler.service';
+import { SharedModule } from './shared/shared.module';
+import { HeaderComponent } from './core/layout/header/header.component';
+import { HomeComponent } from './core/layout/home/home.component';
+import { ForbiddenComponent } from './core/layout/forbidden/forbidden.component';
+import { AuthGuard } from './core/auth/auth.guard';
+import { AuthInterceptor } from './core/auth/auth.interceptor';
+import { AppErrorHandler } from './core/services/error-handler.service';
 
+/**
+ * Module racine : coquille de l'application (en-tête, accueil, accès refusé)
+ * et services transverses. Les écrans métier vivent dans les modules de
+ * fonctionnalité chargés à la demande (voir app-routing.module.ts).
+ */
 @NgModule({
   declarations: [
     AppComponent,
-    BooksListComponent,
-    CreateBookComponent,
-    UpdateBookComponent,
-    BookDetailsComponent,
-    RegistrationComponent,
-    UsersListComponent,
-    UserDetailsComponent,
-    UpdateUserComponent,
-    LoginComponent,
-    LogoutComponent,
     HeaderComponent,
     HomeComponent,
     ForbiddenComponent,
-    BorrowBookComponent,
-    ReturnBookComponent,
-    ReservationsComponent,
-    ReservationListComponent,
-    ReservationFormComponent,
-    BorrowListComponent,
-    TranslatePipe,
   ],
   imports: [
     BrowserModule,
-    AppRoutingModule,
     HttpClientModule,
-    FormsModule,
-    RouterModule
+    SharedModule,
+    AppRoutingModule,
   ],
   providers: [
     { provide: ErrorHandler, useClass: AppErrorHandler },
     AuthGuard,
-    {
-      provide: HTTP_INTERCEPTORS,
-      useClass: AuthInterceptor,
-      multi: true
-    },
-    UsersService,
-    BooksService
-   ],
+    { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true },
+  ],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

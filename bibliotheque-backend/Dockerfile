@@ -1,46 +1,43 @@
-# NB : le contexte de build est la RACINE du projet (voir docker-compose.yml,
-# build.context: .), pour que le Dockerfile puisse lire à la fois
-# bibliotheque-backend/ et bibliotheque-frontend/.
+# Contexte de build : bibliotheque-backend/ (voir docker-compose.yml).
+# Le frontend Angular n'est plus embarqué dans le jar : il est servi par le
+# service nginx « frontend ». Construire l'API ne demande donc plus Node.
 
-# --- Étape 1bis : build frontend -----------------------------------------
-# Angular 14 n'est officiellement supporté que jusqu'à Node 18
-# ("Unsupported" sur Node 22+, voir README section 2).
-# Depuis la fusion, le build Angular est EMBARQUÉ dans le jar Spring Boot :
-# une seule application, un seul port (8080), plus de conteneur nginx.
-# NB : cette étape est déclarée AVANT l'étape maven (qui en dépend via
-# COPY --from) : avec une référence en avant, BuildKit (v0.32) détecte une
-# fausse "circular dependency".
-FROM node:18-alpine AS frontend-build
-WORKDIR /frontend
-COPY bibliotheque-frontend/package.json bibliotheque-frontend/package-lock.json ./
-RUN npm ci
-COPY bibliotheque-frontend/ ./
-RUN npm run build -- --configuration production
-
-# --- Étape 1 : build backend ---------------------------------------------
+# --- Étape 1 : build ------------------------------------------------------
 # Le pom.xml cible Java 1.8 et embarque une version de Lombok trop ancienne
 # pour l'API interne du compilateur des JDK 17+ (voir README section 2 :
-# NoSuchFieldError sur JCTree$JCImport). Plutôt que de moderniser le
-# projet — interdit ici, on ne touche pas au pom.xml pour cette raison —
-# on construit avec un JDK 8, qui correspond à ce que le projet attend.
+# NoSuchFieldError sur JCTree$JCImport) : on construit avec un JDK 8.
 FROM maven:3.8.6-eclipse-temurin-8 AS build
 WORKDIR /app
-COPY bibliotheque-backend/pom.xml .
+COPY pom.xml .
 RUN mvn -B dependency:go-offline
-
-# Le build Angular est copié dans les resources du backend ; il est alors
-# empaqueté tel quel dans le jar et servi automatiquement par Spring Boot
-# depuis /static (voir SpaConfiguration pour le routage client).
-COPY --from=frontend-build /frontend/dist/bibliotheque-frontend ./src/main/resources/static
-
-COPY bibliotheque-backend/src ./src
-RUN mvn -B clean package -DskipTests
+COPY src ./src
+RUN mvn -B clean package -DskipTests \
+    # Jar en couches : dépendances, loader et code applicatif séparés. Une
+    # modification du code ne reconstruit plus que la dernière couche.
+    && mkdir -p target/couches \
+    && cd target/couches \
+    && java -Djarmode=layertools -jar ../*.jar extract
 
 # --- Étape 2 : exécution --------------------------------------------------
 FROM eclipse-temurin:8-jre-alpine
 WORKDIR /app
 
-COPY --from=build /app/target/*.jar app.jar
+# Utilisateur sans privilèges : une faille dans l'application ne donne pas
+# les droits root dans le conteneur.
+RUN addgroup -S bibliotheque && adduser -S -G bibliotheque bibliotheque
+
+COPY --from=build /app/target/couches/dependencies/ ./
+COPY --from=build /app/target/couches/spring-boot-loader/ ./
+COPY --from=build /app/target/couches/snapshot-dependencies/ ./
+COPY --from=build /app/target/couches/application/ ./
+
+USER bibliotheque
+
+# La JVM se dimensionne sur la limite mémoire du conteneur (512M) au lieu de
+# la RAM de la machine, et s'arrête franchement (redémarrage Docker) plutôt
+# que de continuer dans un état dégradé après un OutOfMemoryError.
+# MaxRAMPercentage attend un nombre décimal : « 75 » empêche la JVM 8 de démarrer.
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError"
 
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "org.springframework.boot.loader.JarLauncher"]

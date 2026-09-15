@@ -1,0 +1,26 @@
+<h2>{{ 'borrowBook.title' | translate }}</h2>
+<table class="table table-success table-striped">
+  <caption class="visually-hidden">{{ 'table.caption.available' | translate }}</caption>
+    <thead>
+        <tr>
+            <th scope="col"> {{ 'books.bookId' | translate }} </th>
+            <th scope="col"> {{ 'books.name' | translate }} </th>
+            <th scope="col"> {{ 'books.author' | translate }} </th>
+            <th scope="col"> {{ 'books.genre' | translate }} </th>
+            <th scope="col"> {{ 'books.copies' | translate }} </th>
+            <th scope="col"> {{ 'books.actions' | translate }} </th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr *ngFor="let book of books">
+            <td> {{ book.bookId }} </td>
+            <td> {{ book.bookName }} </td>
+            <td> {{ book.bookAuthor }} </td>
+            <td> {{ book.bookGenre }} </td>
+            <td> {{ book.noOfCopies }} </td>
+            <td>
+                <button (click) = "borrowBook(book.bookId)" class="btn btn-success"> {{ 'borrowBook.borrow' | translate }} </button>
+            </td>
+        </tr>
+    </tbody>
+</table>

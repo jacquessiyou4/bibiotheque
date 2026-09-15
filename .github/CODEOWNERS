@@ -1,0 +1,8 @@
+# Relecteurs demandés automatiquement sur chaque pull request.
+# Voir https://docs.github.com/articles/about-code-owners
+*                               @jacquessiyou4
+
+# Sécurité, schéma de base et pipeline : relecture obligatoire.
+/keycloak/                      @jacquessiyou4
+/bibliotheque-backend/src/main/resources/db/migration/  @jacquessiyou4
+/.github/                       @jacquessiyou4

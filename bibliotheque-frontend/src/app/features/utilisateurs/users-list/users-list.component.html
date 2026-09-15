@@ -1,0 +1,37 @@
+<h2>{{ 'users.title' | translate }}</h2>
+<table class="table table-success table-striped">
+  <caption class="visually-hidden">{{ 'table.caption.users' | translate }}</caption>
+    <thead>
+        <tr>
+            <th scope="col"> {{ 'users.userId' | translate }} </th>
+            <th scope="col"> {{ 'users.name' | translate }} </th>
+            <th scope="col"> {{ 'users.username' | translate }} </th>
+            <th scope="col"> {{ 'users.role' | translate }} </th>
+            <th scope="col"> {{ 'users.viewHistory' | translate }} </th>
+            <th scope="col"> {{ 'users.editUser' | translate }} </th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr *ngFor="let user of users">
+            <td> {{ user.userId }} </td>
+            <td> {{ user.name }} </td>
+            <td> {{ user.username }} </td>
+            <td> {{ user.role && user.role.length ? user.role[0].roleName : '—' }} </td>
+            <td>
+                <button (click) = "userDetails(user.userId)" class="btn btn-success"> {{ 'users.view' | translate }} </button>
+            </td>
+            <td>
+                <button (click) = "updateUser(user.userId)" class="btn btn-info"> {{ 'users.edit' | translate }} </button>
+            </td>
+        </tr>
+    </tbody>
+</table>
+<nav *ngIf="totalPages > 1" class="d-flex align-items-center gap-2" aria-label="Pagination">
+    <button type="button" class="btn btn-outline-secondary btn-sm" (click)="goToPage(page - 1)" [disabled]="page === 0">
+        {{ 'pagination.previous' | translate }}
+    </button>
+    <span class="pagination-status">{{ 'pagination.page' | translate }} {{ page + 1 }} / {{ totalPages }}</span>
+    <button type="button" class="btn btn-outline-secondary btn-sm" (click)="goToPage(page + 1)" [disabled]="page >= totalPages - 1">
+        {{ 'pagination.next' | translate }}
+    </button>
+</nav>

@@ -1,0 +1,54 @@
+name: Release
+
+# Sur main, release-please lit les messages de commit conventionnels
+# (feat:, fix:, docs:…) et tient à jour une pull request « chore: release » :
+# numéro de version SemVer, CHANGELOG.md, versions du pom.xml et du package.json.
+# Fusionner cette PR crée le tag vX.Y.Z et la release GitHub, puis publie les
+# images Docker taguées avec la version et le commit.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+  packages: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  images:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push images
+        env:
+          VERSION: ${{ needs.release-please.outputs.version }}
+          REGISTRY: ghcr.io/${{ github.repository_owner }}
+        run: |
+          SHA=$(git rev-parse --short HEAD)
+          for service in backend frontend; do
+            image="$REGISTRY/bibliotheque-$service"
+            docker build -t "$image:$VERSION" -t "$image:sha-$SHA" "bibliotheque-$service"
+            docker push "$image:$VERSION"
+            docker push "$image:sha-$SHA"
+          done

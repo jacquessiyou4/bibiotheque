@@ -1,0 +1,39 @@
+# Mises à jour de dépendances proposées chaque semaine en pull request.
+# Les versions mineures et correctives d'un même écosystème sont groupées
+# dans une seule PR ; les montées majeures restent séparées (à relire).
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /bibliotheque-backend
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      maven-mineures:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /bibliotheque-frontend
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      npm-mineures:
+        update-types: [minor, patch]
+
+  - package-ecosystem: docker
+    directory: /bibliotheque-backend
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /bibliotheque-frontend
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

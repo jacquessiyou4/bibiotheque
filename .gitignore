@@ -5,3 +5,15 @@
 # Identifiants locaux (voir .env.example)
 .env
 .aider*
+
+# Sauvegardes locales des bases (service backup, profil ops)
+backups/
+
+# Secrets Docker (docker-compose.secrets.yml) : jamais versionnés
+secrets/
+
+# Recherches personnelles (exports de conversations privées) et fichiers hors projet
+docs/research/
+*.tgz
+Bibliothèque Performance Plan.html
+Bibliothèque Performance Plan_files/

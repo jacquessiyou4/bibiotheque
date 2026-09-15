@@ -1,0 +1,83 @@
+{
+  "uid": "bibliotheque",
+  "title": "Bibliothèque — santé de l'API",
+  "tags": ["bibliotheque"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Latence des requêtes API (p50 / p95 / p99)",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [
+        { "refId": "A", "legendFormat": "p50", "expr": "histogram_quantile(0.50, sum by (le) (rate(http_server_requests_seconds_bucket{uri!~\"/actuator.*\"}[5m])))" },
+        { "refId": "B", "legendFormat": "p95", "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{uri!~\"/actuator.*\"}[5m])))" },
+        { "refId": "C", "legendFormat": "p99", "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{uri!~\"/actuator.*\"}[5m])))" }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Réponses par classe de statut (req/s)",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "targets": [
+        { "refId": "A", "legendFormat": "{{outcome}}", "expr": "sum by (outcome) (rate(http_server_requests_seconds_count{uri!~\"/actuator.*\"}[5m]))" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Activité de la bibliothèque (par heure)",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "legendFormat": "emprunts", "expr": "sum(increase(bibliotheque_emprunts_total[1h]))" },
+        { "refId": "B", "legendFormat": "retours", "expr": "sum(increase(bibliotheque_retours_total[1h]))" },
+        { "refId": "C", "legendFormat": "réservations créées", "expr": "sum(increase(bibliotheque_reservations_total[1h]))" },
+        { "refId": "D", "legendFormat": "réservations expirées", "expr": "sum(increase(bibliotheque_reservations_expirees_total[1h]))" }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Connexions (par heure)",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "legendFormat": "{{resultat}}", "expr": "sum by (resultat) (increase(bibliotheque_connexions_total[1h]))" }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Connexions à la base (pool Hikari)",
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "legendFormat": "actives", "expr": "hikaricp_connections_active" },
+        { "refId": "B", "legendFormat": "en attente", "expr": "hikaricp_connections_pending" },
+        { "refId": "C", "legendFormat": "maximum", "expr": "hikaricp_connections_max" }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Mémoire JVM (heap)",
+      "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes" } },
+      "targets": [
+        { "refId": "A", "legendFormat": "utilisée", "expr": "sum(jvm_memory_used_bytes{area=\"heap\"})" },
+        { "refId": "B", "legendFormat": "maximum", "expr": "sum(jvm_memory_max_bytes{area=\"heap\"})" }
+      ]
+    }
+  ]
+}

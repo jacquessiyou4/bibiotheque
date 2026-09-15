@@ -1,0 +1,96 @@
+import { HttpErrorResponse, HttpEvent, HttpHandler, HttpInterceptor, HttpRequest } from '@angular/common/http';
+import { Router } from '@angular/router';
+import { catchError } from 'rxjs/operators';
+import { Observable, throwError } from 'rxjs';
+import { UserAuthService } from '../services/user-auth.service';
+import { NotificationService } from '../services/notification.service';
+import { messageErreur } from '../services/api-error';
+import { TranslationService } from '../services/translation.service';
+import { Injectable } from '@angular/core';
+
+@Injectable()
+export class AuthInterceptor implements HttpInterceptor {
+  constructor(
+    private userAuthService: UserAuthService,
+    private router:Router,
+    private notificationService: NotificationService,
+    private translationService: TranslationService
+  ) {}
+
+  intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
+    const noAuth = req.headers.get('No-Auth') === 'True';
+    let headers: Record<string, string> = {};
+
+    if (!noAuth) {
+      const token = this.userAuthService.getToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      // Ajouter un X-Request-ID unique pour corréler les logs frontend → backend
+      // (pas sur les appels No-Auth vers Keycloak, qui ne l'autorise pas en CORS).
+      headers['X-Request-ID'] = this.generateRequestId();
+    }
+
+    // No-Auth n'est qu'un marqueur interne : il ne doit pas partir sur le
+    // réseau, un en-tête inconnu fait échouer la pré-requête CORS.
+    const base = noAuth ? req.clone({ headers: req.headers.delete('No-Auth') }) : req;
+    const cloned = base.clone({ setHeaders: headers });
+
+    return next.handle(cloned).pipe(
+        catchError(
+            (erreurRecue:HttpErrorResponse) => {
+                const err = this.localiser(erreurRecue);
+                if(err.status === 401) {
+                    // Jeton expiré ou refusé : la session locale n'est plus valable.
+                    // On prévient l'utilisateur (message du backend, ex. « Votre session
+                    // a expiré ») seulement s'il était connecté : un mauvais mot de
+                    // passe au login (requête No-Auth) a son propre message.
+                    const sessionPerdue = !noAuth && !!this.userAuthService.getToken();
+                    this.userAuthService.clear();
+                    if (sessionPerdue) {
+                        this.notificationService.showWarning(
+                            messageErreur(err, 'Votre session a expiré. Veuillez vous reconnecter.'));
+                    }
+                    this.router.navigate(['/login']);
+                } else if(err.status === 403) {
+                    this.router.navigate(['/forbidden']);
+                }
+                return throwError(() => err);
+            }
+        )
+    );
+  }
+
+  /**
+   * Le backend rédige ses messages en français et joint un code stable
+   * (BOOK_UNAVAILABLE…). En anglais, le message est remplacé par sa
+   * traduction quand elle existe ; sinon le texte du backend est gardé.
+   */
+  private localiser(err: HttpErrorResponse): HttpErrorResponse {
+    const corps = err.error;
+    const code = corps && typeof corps === 'object' ? corps.code : undefined;
+    if (!code || this.translationService.getLang() === 'fr') {
+      return err;
+    }
+    const cle = `erreur.${code}`;
+    const traduction = this.translationService.translate(cle);
+    if (traduction === cle) {
+      return err;
+    }
+    return new HttpErrorResponse({
+      error: { ...corps, detail: traduction, message: traduction },
+      headers: err.headers,
+      status: err.status,
+      statusText: err.statusText,
+      url: err.url ?? undefined
+    });
+  }
+
+  private generateRequestId(): string {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+}

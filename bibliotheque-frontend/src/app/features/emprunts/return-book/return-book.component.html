@@ -1,0 +1,26 @@
+<h2>{{ 'returnBook.title' | translate }}</h2>
+<table class="table table-success table-striped">
+  <caption class="visually-hidden">{{ 'table.caption.toReturn' | translate }}</caption>
+    <thead>
+        <tr>
+            <th scope="col"> {{ 'books.bookId' | translate }} </th>
+            <th scope="col"> {{ 'history.issueDate' | translate }} </th>
+            <th scope="col"> {{ 'history.returnDate' | translate }} </th>
+            <th scope="col"> {{ 'returnBook.overdueDate' | translate }} </th>
+            <th scope="col"> {{ 'returnBook.action' | translate }} </th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr *ngFor="let b of borrow">
+            <td> {{ b.bookId }} </td>
+            <td> {{ b.issueDate | date:'dd/MM/yyyy' }} </td>
+            <td> {{ b.returnDate | date:'dd/MM/yyyy' }} </td>
+            <td> {{ b.dueDate | date:'dd/MM/yyyy' }} </td>
+            <td>
+                <div *ngIf="b.returnDate === null">
+                    <button (click) = "returnBook(b.borrowId)" class="btn btn-success"> {{ 'returnBook.return' | translate }} </button>
+                </div>
+            </td>
+        </tr>
+    </tbody>
+</table>

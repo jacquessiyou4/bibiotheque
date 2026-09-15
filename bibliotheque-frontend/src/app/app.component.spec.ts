@@ -2,10 +2,10 @@ import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { RouterTestingModule } from '@angular/router/testing';
 import { AppComponent } from './app.component';
-import { HeaderComponent } from './header/header.component';
-import { TranslatePipe } from './_i18n/translate.pipe';
-import { TranslationService } from './_service/translation.service';
-import { ThemeService } from './_service/theme.service';
+import { HeaderComponent } from './core/layout/header/header.component';
+import { TranslatePipe } from './shared/pipes/translate.pipe';
+import { TranslationService } from './core/services/translation.service';
+import { ThemeService } from './core/services/theme.service';
 
 describe('AppComponent', () => {
   let themeServiceSpy: jasmine.SpyObj<ThemeService>;

@@ -1,0 +1,23 @@
+<div class="container col-md-6 offset-mid-3">
+<form autocomplete="off" #loginForm="ngForm" (ngSubmit)="login(loginForm)">
+    <div class="mb-3">
+      <label for="loginUsername" class="form-label" style="margin-top: 100px;">{{ 'login.username' | translate }}</label>
+      <input type="text" name="username" ngModel required #username="ngModel" class="form-control" id="loginUsername" placeholder="Enter your username">
+      <div id="emailHelp" class="form-text">{{ 'login.usernameHelp' | translate }}</div>
+      <div *ngIf="username.invalid && username.touched" class="text-danger">
+        {{ 'validation.login_username_required' | translate }}
+      </div>
+    </div>
+    <div class="mb-3">
+      <label for="loginPassword" class="form-label">{{ 'login.password' | translate }}</label>
+      <div class="input-group">
+        <input [type]="showPassword ? 'text' : 'password'" name="password" ngModel required #password="ngModel" class="form-control" id="loginPassword" placeholder="Enter your password">
+        <button type="button" class="btn btn-outline-secondary" (click)="togglePasswordVisibility()">{{ (showPassword ? 'login.hide' : 'login.show') | translate }}</button>
+      </div>
+      <div *ngIf="password.invalid && password.touched" class="text-danger">
+        {{ 'validation.login_password_required' | translate }}
+      </div>
+    </div>
+    <input type="submit" [value]="'login.login' | translate" class="btn btn-primary" [disabled]="loginForm.invalid"/>
+  </form>
+</div>

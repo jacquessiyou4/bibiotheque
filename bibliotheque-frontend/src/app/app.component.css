@@ -1,0 +1,18 @@
+
+/* Lien d'évitement : invisible jusqu'à ce qu'il reçoive le focus clavier. */
+.lien-evitement {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 2000;
+  padding: 0.5rem 1rem;
+  background: #0d6efd;
+  color: #fff;
+}
+.lien-evitement:focus {
+  left: 0.5rem;
+  top: 0.5rem;
+}
+main:focus {
+  outline: none;
+}

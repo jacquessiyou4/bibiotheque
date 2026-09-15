@@ -1,9 +1,9 @@
 package com.ibizabroker.bibliotheque;
 
-import com.ibizabroker.bibliotheque.dao.BooksRepository;
-import com.ibizabroker.bibliotheque.dao.BorrowRepository;
-import com.ibizabroker.bibliotheque.dao.ReservationRepository;
-import com.ibizabroker.bibliotheque.dao.UsersRepository;
+import com.ibizabroker.bibliotheque.catalogue.internal.BooksRepository;
+import com.ibizabroker.bibliotheque.emprunts.internal.BorrowRepository;
+import com.ibizabroker.bibliotheque.reservations.internal.ReservationRepository;
+import com.ibizabroker.bibliotheque.utilisateurs.internal.UsersRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

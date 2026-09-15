@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Logs du backend.
+  - Par défaut : format texte habituel de Spring Boot, avec le requestId
+    (logging.pattern.level dans application.properties).
+  - Profil « json » (SPRING_PROFILES_ACTIVE=prod,json) : une ligne JSON par
+    événement, lisible par Loki, Elastic ou tout collecteur de logs. Les champs
+    du MDC (requestId) deviennent des champs JSON.
+-->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <springProfile name="!json">
+        <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="json">
+        <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <customFields>{"application":"bibliotheque-backend"}</customFields>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="JSON"/>
+        </root>
+    </springProfile>
+</configuration>

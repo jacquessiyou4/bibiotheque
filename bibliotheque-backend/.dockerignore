@@ -1,3 +1,6 @@
+# Contexte de build = bibliotheque-backend/ : seuls pom.xml et src/ sont utiles.
 target
-.git
-*.log
+.idea
+.vscode
+*.iml
+*.md

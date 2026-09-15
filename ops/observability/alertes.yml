@@ -1,0 +1,48 @@
+# Règles d'alerte évaluées par Prometheus. Visibles dans l'onglet « Alerts » de
+# Prometheus (http://localhost:9090/alerts) ; les brancher sur un Alertmanager
+# pour recevoir un e-mail ou un message.
+groups:
+  - name: bibliotheque
+    rules:
+      - alert: BackendInjoignable
+        expr: up{job="bibliotheque-backend"} == 0
+        for: 2m
+        labels:
+          severite: critique
+        annotations:
+          resume: "Le backend ne répond plus depuis 2 minutes"
+
+      - alert: TauxErreurs5xxEleve
+        expr: |
+          sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m]))
+            / sum(rate(http_server_requests_seconds_count[5m])) > 0.05
+        for: 5m
+        labels:
+          severite: haute
+        annotations:
+          resume: "Plus de 5 % de réponses 5xx sur 5 minutes"
+
+      - alert: LatenceP95Elevee
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(http_server_requests_seconds_bucket{uri!~"/actuator.*"}[5m]))) > 0.2
+        for: 10m
+        labels:
+          severite: moyenne
+        annotations:
+          resume: "p95 des requêtes API au-dessus de 200 ms depuis 10 minutes (objectif du RUNBOOK)"
+
+      - alert: ConnexionsRefuseesEnSerie
+        expr: sum(increase(bibliotheque_connexions_total{resultat="echec"}[10m])) > 20
+        labels:
+          severite: moyenne
+        annotations:
+          resume: "Plus de 20 connexions refusées en 10 minutes : essai de mots de passe ?"
+
+      - alert: PoolConnexionsSature
+        expr: hikaricp_connections_pending > 0
+        for: 5m
+        labels:
+          severite: moyenne
+        annotations:
+          resume: "Des requêtes attendent une connexion à la base depuis 5 minutes"

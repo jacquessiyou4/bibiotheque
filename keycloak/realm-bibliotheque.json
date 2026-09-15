@@ -9,7 +9,13 @@
   "resetPasswordAllowed": true,
   "editUsernameAllowed": false,
   "sslRequired": "external",
-  "accessTokenLifespan": 1800,
+  "accessTokenLifespan": 900,
+  "bruteForceProtected": true,
+  "failureFactor": 5,
+  "waitIncrementSeconds": 60,
+  "maxFailureWaitSeconds": 900,
+  "maxDeltaTimeSeconds": 43200,
+  "permanentLockout": false,
   "roles": {
     "realm": [
       {
@@ -93,21 +99,6 @@
       "serviceAccountsEnabled": false,
       "redirectUris": ["http://localhost:4200/*", "http://localhost:8080/*", "http://localhost:8082/*"],
       "webOrigins": ["http://localhost:4200", "http://localhost:8080", "http://localhost:8082"]
-    },
-    {
-      "clientId": "bibliotheque-backend",
-      "name": "Backend Spring Boot",
-      "protocol": "openid-connect",
-      "enabled": true,
-      "publicClient": false,
-      "clientAuthenticatorType": "client-secret",
-      "secret": "bibliotheque-backend-secret",
-      "standardFlowEnabled": false,
-      "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": true,
-      "serviceAccountsEnabled": true,
-      "redirectUris": ["http://localhost:8080/*"],
-      "webOrigins": ["http://localhost:8080"]
     }
   ]
 }
